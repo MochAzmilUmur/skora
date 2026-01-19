@@ -47,21 +47,28 @@ func (h *RoomHandler) GetRooms(c *gin.Context) {
 }
 
 func (h *RoomHandler) GetRoom(c *gin.Context) {
-	id := c.Param("id")
-	roomID, err := uuid.Parse(id)
+	userIDParam := c.Query("user_id")
+
+	userID, err := uuid.Parse(userIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
 		return
 	}
 
-	var room models.Room
-	if err := h.DB.Preload("User").First(&room, "id_room = ?", roomID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+	var rooms []models.Room
+
+	if err := h.DB.
+		Preload("User").
+		Where("id_users = ?", userID).
+		Find(&rooms).Error; err != nil {
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch rooms"})
 		return
 	}
 
-	c.JSON(http.StatusOK, room)
+	c.JSON(http.StatusOK, rooms)
 }
+
 
 func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	id := c.Param("id")

@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"backend/internal/models"
+	
 )
 
 func InitDB() *gorm.DB {
@@ -25,24 +25,7 @@ func InitDB() *gorm.DB {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Auto migrate all models
-	err = db.AutoMigrate(
-		&models.User{},
-		&models.Room{},
-		&models.RoomParticipant{},
-		&models.Pertanyaan{},
-		&models.QuestionOption{},
-		&models.SesiUjian{},
-		&models.Answer{},
-		&models.HasilUjian{},
-		&models.Feedback{},
-		&models.ActivityLog{},
-		&models.PasswordReset{},
-	)
-	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
-	}
-
+	
 	return db
 }
 

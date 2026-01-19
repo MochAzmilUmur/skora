@@ -17,7 +17,7 @@ func SetupRoutes(db *gorm.DB) *gin.Engine {
 	answerHandler := handlers.NewAnswerHandler(db)
 	hasilUjianHandler := handlers.NewHasilUjianHandler(db)
 
-	api := r.Group("/api/v1")
+	api := r.Group("/api")
 	{
 		// User routes
 		users := api.Group("/users")

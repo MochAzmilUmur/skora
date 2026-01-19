@@ -9,10 +9,14 @@ import (
 type User struct {
 	IDUsers      int            `json:"id_users" gorm:"primaryKey;autoIncrement;column:id_users"`
 	Nama         string         `json:"nama" gorm:"column:nama"`
-	Email        string         `json:"email" gorm:"uniqueIndex;column:email"`
+	Email        string         `json:"email" gorm:"column:email"`
 	PasswordHash string         `json:"-" gorm:"column:password_hash"`
 	CreatedAt    time.Time      `json:"created_at" gorm:"column:created_at"`
 }
+func (User) TableName() string {
+	return "users"
+}
+
 
 type Room struct {
 	IDRoom    uuid.UUID `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
@@ -21,6 +25,9 @@ type Room struct {
 	CreatedBy int       `json:"created_by" gorm:"column:created_by"`
 	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 	User      User      `json:"user" gorm:"foreignKey:CreatedBy;references:IDUsers"`
+}
+func (Room) TableName() string {
+	return "room"
 }
 
 type RoomParticipant struct {
@@ -32,6 +39,9 @@ type RoomParticipant struct {
 	Room     Room      `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	User     User      `json:"user" gorm:"foreignKey:UserID;references:IDUsers"`
 }
+func (RoomParticipant) TableName() string {
+	return "room_participants"
+}
 
 type Pertanyaan struct {
 	ID              int              `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
@@ -41,6 +51,9 @@ type Pertanyaan struct {
 	Room            Room             `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	QuestionOptions []QuestionOption `json:"question_options" gorm:"foreignKey:QuestionID;references:ID"`
 }
+func (Pertanyaan) TableName() string {
+	return "pertanyaan"
+}
 
 type QuestionOption struct {
 	ID         int  `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
@@ -48,6 +61,9 @@ type QuestionOption struct {
 	OptionText string `json:"option_text" gorm:"column:option_text"`
 	IsCorrect  bool `json:"is_correct" gorm:"column:is_correct"`
 	Pertanyaan Pertanyaan `json:"pertanyaan" gorm:"foreignKey:QuestionID;references:ID"`
+}
+func (QuestionOption) TableName() string {
+	return "question_options"
 }
 
 type SesiUjian struct {
@@ -59,6 +75,9 @@ type SesiUjian struct {
 	Status    string    `json:"status" gorm:"type:enum('ongoing','completed','timeout');column:status"`
 	Room      Room      `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	User      User      `json:"user" gorm:"foreignKey:UserID;references:IDUsers"`
+}
+func (SesiUjian) TableName() string {
+	return "sesi_ujian"
 }
 
 type Answer struct {
@@ -72,6 +91,9 @@ type Answer struct {
 	Pertanyaan       Pertanyaan       `json:"pertanyaan" gorm:"foreignKey:QuestionID;references:ID"`
 	QuestionOption   *QuestionOption  `json:"question_option" gorm:"foreignKey:SelectedOptionID;references:ID"`
 }
+func (Answer) TableName() string {
+	return "answers"
+}
 
 type HasilUjian struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
@@ -81,6 +103,9 @@ type HasilUjian struct {
 	JawabanSalah   int       `json:"jawaban_salah" gorm:"column:jawaban_salah"`
 	Skor           float64   `json:"skor" gorm:"column:skor"`
 	SesiUjian      SesiUjian `json:"sesi_ujian" gorm:"foreignKey:SessionID;references:ID"`
+}
+func (HasilUjian) TableName() string {
+	return "hasil_ujian"
 }
 
 type Feedback struct {
@@ -92,6 +117,9 @@ type Feedback struct {
 	HasilUjian HasilUjian  `json:"hasil_ujian" gorm:"foreignKey:HasilID;references:ID"`
 	Asesor     User        `json:"asesor" gorm:"foreignKey:AsesorID;references:IDUsers"`
 }
+func (Feedback) TableName() string {
+	return "feedbacks"
+}
 
 type ActivityLog struct {
 	ID           int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
@@ -99,6 +127,9 @@ type ActivityLog struct {
 	ActivityType string    `json:"activity_type" gorm:"column:activity_type"`
 	ActivityTime time.Time `json:"activity_time" gorm:"column:activity_time"`
 	SesiUjian    SesiUjian `json:"sesi_ujian" gorm:"foreignKey:SessionID;references:ID"`
+}
+func (ActivityLog) TableName() string {
+	return "activity_logs"
 }
 
 type PasswordReset struct {
@@ -109,4 +140,7 @@ type PasswordReset struct {
 	UsedAt    *time.Time `json:"used_at" gorm:"column:used_at"`
 	CreatedAt time.Time  `json:"created_at" gorm:"default:now();column:created_at;index"`
 	User      User       `json:"user" gorm:"foreignKey:IDUsers;references:IDUsers"`
+}
+func (PasswordReset) TableName() string {
+	return "password_reset"
 }

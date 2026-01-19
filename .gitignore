@@ -1,0 +1,21 @@
+# Environment
+.env
+/backend/.env
+
+# Test / local tools
+/backend/test.rest
+
+# Dependencies
+node_modules/
+vendor/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

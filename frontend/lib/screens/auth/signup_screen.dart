@@ -17,7 +17,8 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return AnimatedLogin(
       onSignup: AuthService(context).onSignup,
-      logo: Image.asset('assets/images/logo.gif'),
+      
+      logo: Image.asset('assets/kroniva.webp'),
       signUpMode: SignUpModes.both,
       socialLogins: _socialLogins(context),
       loginDesktopTheme: _desktopTheme,
@@ -63,6 +64,7 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: Colors.blue,
         formFieldBackgroundColor: Colors.white,
         formWidthRatio: 60,
+        checkColor: Colors.blue,
       );
 
   LoginTexts get _loginTexts => LoginTexts(

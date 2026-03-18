@@ -62,7 +62,7 @@ class AuthService {
       
       // Buat user baru
       final newUser = await UserService.createUser(
-        signupData.name ?? signupData.email.split('@')[0],
+        signupData.name.isEmpty ? signupData.email.split('@')[0] : signupData.name,
         signupData.email,
         signupData.password,
       );

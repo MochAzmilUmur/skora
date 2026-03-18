@@ -3,10 +3,12 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"backend/internal/delivery/ws"
 	"backend/internal/handlers"
+	"backend/internal/infrastructure/socket"
 )
 
-func SetupRoutes(db *gorm.DB) *gin.Engine {
+func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	r := gin.Default()
 
 	// Initialize handlers
@@ -16,6 +18,10 @@ func SetupRoutes(db *gorm.DB) *gin.Engine {
 	sesiUjianHandler := handlers.NewSesiUjianHandler(db)
 	answerHandler := handlers.NewAnswerHandler(db)
 	hasilUjianHandler := handlers.NewHasilUjianHandler(db)
+	feedbackHandler := handlers.NewFeedbackHandler(db, hub)
+
+	// WebSocket endpoint: ws://host/ws?token=<jwt>
+	r.GET("/ws", ws.Handler(hub))
 
 	api := r.Group("/api")
 	{
@@ -78,6 +84,9 @@ func SetupRoutes(db *gorm.DB) *gin.Engine {
 			hasilUjians.PUT("/:id", hasilUjianHandler.UpdateHasilUjian)
 			hasilUjians.DELETE("/:id", hasilUjianHandler.DeleteHasilUjian)
 		}
+
+		// Feedback routes
+		api.POST("/feedback", feedbackHandler.SendFeedback)
 	}
 
 	return r

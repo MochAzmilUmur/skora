@@ -6,6 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"backend/internal/database"
+	"backend/internal/infrastructure/socket"
 	"backend/internal/routes"
 )
 
@@ -18,8 +19,12 @@ func main() {
 	// Initialize database
 	db := database.InitDB()
 
+	// Initialize WebSocket Hub dan jalankan event loop-nya
+	hub := socket.NewHub()
+	go hub.Run()
+
 	// Setup routes
-	r := routes.SetupRoutes(db)
+	r := routes.SetupRoutes(db, hub)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:frontend/features/auth/data/models/user.dart';
+import 'package:frontend/features/auth/data/models/auth/user.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/utils/logger.dart';
 

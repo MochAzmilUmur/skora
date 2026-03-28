@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:frontend/models/user.dart';
-import 'package:frontend/services/api/api_client.dart';
-import 'package:frontend/utils/logger.dart';
+import 'package:frontend/features/auth/data/models/user.dart';
+import 'package:frontend/core/network/api_client.dart';
+import 'package:frontend/core/utils/logger.dart';
 
 class UserService {
   static Future<List<User>> getUsers() async {

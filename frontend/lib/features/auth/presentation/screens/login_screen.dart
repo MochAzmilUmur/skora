@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animated_login/animated_login.dart';
-import 'package:frontend/widgets/dialog_builder.dart';
-import 'package:frontend/services/auth_service.dart';
+import 'package:frontend/core/widgets/dialog_builder.dart';
+import 'package:frontend/features/auth/data/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

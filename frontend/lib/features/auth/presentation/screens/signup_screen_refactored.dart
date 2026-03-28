@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:animated_login/animated_login.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/language_constants.dart';
-import '../../../../widgets/dialog_builder.dart';
+import '../../../../core/widgets/dialog_builder.dart';
 import '../controllers/auth_controller.dart';
 
 class SignupScreenRefactored extends StatefulWidget {

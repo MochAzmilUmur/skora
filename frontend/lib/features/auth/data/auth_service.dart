@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animated_login/animated_login.dart';
-import '../widgets/dialog_builder.dart';
-import 'api/user_service.dart';
-import '../utils/logger.dart';
+import '../../../core/widgets/dialog_builder.dart';
+import '../../../core/network/user_service.dart';
+import '../../../core/utils/logger.dart';
 
 class AuthService {
   const AuthService(this.context);

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:frontend/utils/logger.dart';
+import 'package:frontend/core/utils/logger.dart';
 
 class ApiClient {
   static const String baseUrl = 'http://localhost:8080/api';

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../room/presentation/screens/create_exam_room_screen.dart';
+import '../room/data/models/models.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -9,6 +11,38 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  List<RoomModel> _rooms = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRooms();
+  }
+
+  Future<void> _loadRooms() async {
+    setState(() => _isLoading = true);
+    // TODO: Implement actual API call using RoomRepository
+    // final result = await roomRepository.getRooms();
+    // result.fold(
+    //   (failure) => _showError(failure.message),
+    //   (rooms) => setState(() => _rooms = rooms),
+    // );
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _navigateToCreateRoom() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CreateExamRoomScreen(),
+      ),
+    );
+    
+    if (result == true) {
+      _loadRooms();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,20 +119,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildActionCard(
-                icon: Icons.add_circle_outline,
-                title: 'Create Room',
-                subtitle: 'Host a new competency\ntest session',
-                color: Colors.blue,
+              child: InkWell(
+                onTap: _navigateToCreateRoom,
+                child: _buildActionCard(
+                  icon: Icons.add_circle_outline,
+                  title: 'Create Room',
+                  subtitle: 'Host a new competency\ntest session',
+                  color: Colors.blue,
+                ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: _buildActionCard(
-                icon: Icons.qr_code_scanner,
-                title: 'Join Room',
-                subtitle: 'Enter code or scan QR to\njoin',
-                color: Colors.blue,
+              child: InkWell(
+                onTap: () {
+                  // TODO: Implement join room
+                },
+                child: _buildActionCard(
+                  icon: Icons.qr_code_scanner,
+                  title: 'Join Room',
+                  subtitle: 'Enter code or scan QR to\njoin',
+                  color: Colors.blue,
+                ),
               ),
             ),
           ],
@@ -171,50 +213,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _buildExamCard(
-          title: 'Biology 101 Finals',
-          instructor: 'Dr. Sarah Jenkins',
-          room: 'Room 302',
-          time: 'Starts in 10 mins',
-          students: '24 Students',
-          status: 'Live',
-          statusColor: Colors.green,
-          borderColor: Colors.green,
-        ),
-        const SizedBox(height: 16),
-        _buildExamCard(
-          title: 'Advanced Calculus',
-          instructor: 'Prof. Alan Turing',
-          room: '',
-          time: 'Tomorrow, 10:00 AM',
-          students: '90 mins',
-          status: 'Upcoming',
-          statusColor: Colors.orange,
-          borderColor: Colors.orange,
-          isUpcoming: true,
-        ),
+        _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.blue),
+              )
+            : _rooms.isEmpty
+                ? _buildEmptyState()
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _rooms.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final room = _rooms[index];
+                      return _buildExamCard(room: room);
+                    },
+                  ),
       ],
     );
   }
 
-  Widget _buildExamCard({
-    required String title,
-    required String instructor,
-    required String room,
-    required String time,
-    required String students,
-    required String status,
-    required Color statusColor,
-    required Color borderColor,
-    bool isUpcoming = false,
-  }) {
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2942),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 64,
+            color: Colors.grey[600],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No Exams Yet',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create your first exam room to get started',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _navigateToCreateRoom,
+            icon: const Icon(Icons.add),
+            label: const Text('Create Room'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamCard({required RoomModel room}) {
+    final now = DateTime.now();
+    final isUpcoming = room.createdAt.isAfter(now);
+    final statusColor = isUpcoming ? Colors.orange : Colors.green;
+    final status = isUpcoming ? 'Upcoming' : 'Active';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A2942),
         borderRadius: BorderRadius.circular(12),
         border: Border(
-          left: BorderSide(color: borderColor, width: 4),
+          left: BorderSide(color: statusColor, width: 4),
         ),
       ),
       child: Column(
@@ -223,7 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             children: [
               Icon(
-                isUpcoming ? Icons.calculate_outlined : Icons.science_outlined,
+                Icons.school_outlined,
                 color: statusColor,
                 size: 24,
               ),
@@ -233,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      room.roomName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -241,7 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Text(
-                      instructor + (room.isNotEmpty ? ' • $room' : ''),
+                      room.user?.nama ?? 'Unknown',
                       style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
@@ -266,22 +348,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Icon(Icons.access_time, color: Colors.grey[600], size: 16),
               const SizedBox(width: 4),
-              Text(time, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-              const SizedBox(width: 16),
-              Icon(
-                isUpcoming ? Icons.timer_outlined : Icons.people_outline,
-                color: Colors.grey[600],
-                size: 16,
+              Text(
+                '${room.createdAt.day}/${room.createdAt.month}/${room.createdAt.year}',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
               ),
+              const SizedBox(width: 16),
+              Icon(Icons.timer_outlined, color: Colors.grey[600], size: 16),
               const SizedBox(width: 4),
-              Text(students, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              Text(
+                '${room.durasi} mins',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                // TODO: Navigate to room details
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isUpcoming ? Colors.transparent : Colors.blue,
                 foregroundColor: isUpcoming ? Colors.blue : Colors.white,
@@ -291,7 +377,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Text(isUpcoming ? 'View Details' : 'Enter Waiting Room'),
+              child: Text(isUpcoming ? 'View Details' : 'Enter Room'),
             ),
           ),
         ],

@@ -1,8 +1,10 @@
 package routes
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"time"
 	"backend/internal/delivery/ws"
 	"backend/internal/handlers"
 	"backend/internal/infrastructure/socket"
@@ -10,6 +12,16 @@ import (
 
 func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Initialize handlers
 	userHandler := handlers.NewUserHandler(db)

@@ -1,9 +1,18 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:frontend/core/utils/logger.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:8080/api';
+  // Gunakan IP address komputer untuk device fisik, localhost untuk emulator
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      // Untuk device fisik Android, gunakan IP komputer
+      return 'http://192.168.100.232:8080/api';
+    }
+    // Untuk emulator atau platform lain
+    return 'http://localhost:8080/api';
+  }
 
   static Future<http.Response> get(String endpoint) async {
     final url = '$baseUrl$endpoint';

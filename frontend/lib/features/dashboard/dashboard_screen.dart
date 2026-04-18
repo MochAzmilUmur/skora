@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../room/presentation/screens/create_exam_room_screen.dart';
+import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -42,6 +43,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (result == true) {
       _loadRooms();
     }
+  }
+
+  Future<void> _scanQRCode() async {
+    final roomCode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const QRScannerScreen(),
+      ),
+    );
+
+    if (roomCode != null && mounted) {
+      _joinRoomWithCode(roomCode);
+    }
+  }
+
+  void _joinRoomWithCode(String roomCode) {
+    // TODO: Implement join room API call
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Joining room: $roomCode'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -132,9 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: InkWell(
-                onTap: () {
-                  // TODO: Implement join room
-                },
+                onTap: _scanQRCode,
                 child: _buildActionCard(
                   icon: Icons.qr_code_scanner,
                   title: 'Join Room',

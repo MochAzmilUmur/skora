@@ -1,4 +1,4 @@
-import 'package:frontend/features/ujian/data/models/sesi_ujian_model.dart';
+import 'package:skora/features/ujian/data/models/sesi_ujian_model.dart';
 
 class ActivityLogModel {
   final int id;

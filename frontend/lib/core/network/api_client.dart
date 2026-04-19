@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:frontend/core/utils/logger.dart';
+import 'package:skora/core/utils/logger.dart';
 
 class ApiClient {
   // Gunakan IP address komputer untuk device fisik, localhost untuk emulator
   static String get baseUrl {
     if (Platform.isAndroid) {
       // Untuk device fisik Android, gunakan IP komputer
-      return 'http://192.168.100.232:8080/api';
+      return 'http://10.10.10.247:8080/api';
     }
     // Untuk emulator atau platform lain
     return 'http://localhost:8080/api';

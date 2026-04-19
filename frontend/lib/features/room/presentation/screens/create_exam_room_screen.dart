@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../data/repositories/room_repository_impl.dart';
+import '../../data/datasources/room_remote_datasource.dart';
 
 class CreateExamRoomScreen extends StatefulWidget {
   const CreateExamRoomScreen({Key? key}) : super(key: key);
@@ -11,11 +13,15 @@ class CreateExamRoomScreen extends StatefulWidget {
 class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final _roomRepository = RoomRepositoryImpl(
+    remoteDataSource: RoomRemoteDataSourceImpl(),
+  );
   
   String? _selectedDuration = '60 Menit';
   DateTime? _startDate;
   Set<String> _selectedQuestionTypes = {};
   bool _shuffleQuestions = false;
+  bool _isLoading = false;
 
   final List<String> _durationOptions = [
     '30 Menit',
@@ -121,7 +127,7 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _createRoom,
+        onPressed: _isLoading ? null : _createRoom,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF3B82F6),
           foregroundColor: Colors.white,
@@ -130,18 +136,27 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: const Text(
-          'Create Room',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Create Room',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
 
-  void _createRoom() {
+  void _createRoom() async {
     // Validate inputs
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -183,31 +198,57 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
       return;
     }
 
-    // TODO: Implement actual API call using RoomRepository
-    // final roomData = {
-    //   'room_name': _titleController.text.trim(),
-    //   'durasi': int.parse(_selectedDuration!.split(' ')[0]),
-    //   'created_by': currentUserId,
-    // };
-    // 
-    // final result = await roomRepository.createRoom(...);
-    // result.fold(
-    //   (failure) => _showError(failure.message),
-    //   (room) => Navigator.pop(context, true),
-    // );
+    setState(() => _isLoading = true);
 
-    // For now, just show success and return
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Room created successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    try {
+      // Extract duration number from string (e.g., "60 Menit" -> 60)
+      final durationMinutes = int.parse(_selectedDuration!.split(' ')[0]);
+      
+      // TODO: Get actual user ID from auth service
+      const currentUserId = 1; // Temporary hardcoded user ID
 
-    // Return true to indicate success
-    Future.delayed(const Duration(seconds: 1), () {
-      Navigator.of(context).pop(true);
-    });
+      final result = await _roomRepository.createRoom(
+        roomName: _titleController.text.trim(),
+        durasi: durationMinutes,
+        createdBy: currentUserId,
+      );
+
+      if (!mounted) return;
+
+      result.fold(
+        (failure) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to create room: ${failure.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (room) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Room "${room.roomName}" created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Return true to indicate success
+          Future.delayed(const Duration(milliseconds: 500), () {
+            Navigator.of(context).pop(true);
+          });
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildExamDetailsSection() {

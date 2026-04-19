@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:frontend/core/error/failures.dart';
-import 'package:frontend/features/auth/data/models/models.dart';
-import 'package:frontend/features/feedback/domain/repositories/feedback_repository.dart';
-import 'package:frontend/features/feedback/data/datasources/feedback_remote_datasource.dart';
+import 'package:skora/core/error/failures.dart';
+import 'package:skora/features/auth/data/models/models.dart';
+import 'package:skora/features/feedback/domain/repositories/feedback_repository.dart';
+import 'package:skora/features/feedback/data/datasources/feedback_remote_datasource.dart';
 
 class FeedbackRepositoryImpl implements FeedbackRepository {
   final FeedbackRemoteDataSource remoteDataSource;

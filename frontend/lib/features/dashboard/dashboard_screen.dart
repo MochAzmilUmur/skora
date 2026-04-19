@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../room/presentation/screens/create_exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
+import '../room/data/repositories/room_repository_impl.dart';
+import '../room/data/datasources/room_remote_datasource.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +16,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   List<RoomModel> _rooms = [];
   bool _isLoading = false;
+  final _roomRepository = RoomRepositoryImpl(
+    remoteDataSource: RoomRemoteDataSourceImpl(),
+  );
 
   @override
   void initState() {
@@ -23,13 +28,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadRooms() async {
     setState(() => _isLoading = true);
-    // TODO: Implement actual API call using RoomRepository
-    // final result = await roomRepository.getRooms();
-    // result.fold(
-    //   (failure) => _showError(failure.message),
-    //   (rooms) => setState(() => _rooms = rooms),
-    // );
-    setState(() => _isLoading = false);
+    
+    final result = await _roomRepository.getRooms();
+    
+    if (!mounted) return;
+    
+    result.fold(
+      (failure) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load rooms: ${failure.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
+      (rooms) {
+        setState(() {
+          _rooms = rooms;
+          _isLoading = false;
+        });
+      },
+    );
   }
 
   Future<void> _navigateToCreateRoom() async {

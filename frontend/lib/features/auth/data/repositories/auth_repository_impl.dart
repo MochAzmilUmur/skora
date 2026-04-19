@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:frontend/core/error/failures.dart';
-import 'package:frontend/features/auth/domain/entities/user_entity.dart';
-import 'package:frontend/features/auth/domain/repositories/auth_repository.dart';
-import 'package:frontend/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:skora/core/error/failures.dart';
+import 'package:skora/features/auth/domain/entities/user_entity.dart';
+import 'package:skora/features/auth/domain/repositories/auth_repository.dart';
+import 'package:skora/features/auth/data/datasources/auth_remote_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;

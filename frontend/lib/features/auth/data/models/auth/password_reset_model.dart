@@ -1,4 +1,4 @@
-import 'package:frontend/features/auth/data/models/auth/user.dart';
+import 'package:skora/features/auth/data/models/auth/user.dart';
 
 class PasswordResetModel {
   final String id;

@@ -1,4 +1,4 @@
-import 'package:frontend/features/room/data/models/room_model.dart';
+import 'package:skora/features/room/data/models/room_model.dart';
 import 'question_option_model.dart';
 
 enum TypePertanyaan {

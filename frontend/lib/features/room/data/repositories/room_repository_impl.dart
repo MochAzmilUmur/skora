@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:frontend/core/error/failures.dart';
-import 'package:frontend/features/room/domain/repositories/room_repository.dart';
-import 'package:frontend/features/room/data/datasources/room_remote_datasource.dart';
-import 'package:frontend/features/room/data/models/models.dart';
+import 'package:skora/core/error/failures.dart';
+import 'package:skora/features/room/domain/repositories/room_repository.dart';
+import 'package:skora/features/room/data/datasources/room_remote_datasource.dart';
+import 'package:skora/features/room/data/models/models.dart';
 
 class RoomRepositoryImpl implements RoomRepository {
   final RoomRemoteDataSource remoteDataSource;
@@ -39,7 +39,7 @@ class RoomRepositoryImpl implements RoomRepository {
       final room = await remoteDataSource.createRoom(
         roomName: roomName,
         durasi: durasi,
-        createdBy: createdBy,
+        createdBy: createdBy.toString(),
       );
       return Right(room);
     } catch (e) {
@@ -54,11 +54,11 @@ class RoomRepositoryImpl implements RoomRepository {
     int? durasi,
   }) async {
     try {
-      final room = await remoteDataSource.updateRoom(
-        roomId: roomId,
-        roomName: roomName,
-        durasi: durasi,
-      );
+      final data = <String, dynamic>{
+        if (roomName != null) 'room_name': roomName,
+        if (durasi != null) 'durasi': durasi,
+      };
+      final room = await remoteDataSource.updateRoom(roomId, data);
       return Right(room);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

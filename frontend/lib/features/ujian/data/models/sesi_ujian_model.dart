@@ -1,5 +1,5 @@
-import 'package:frontend/features/room/data/models/room_model.dart';
-import 'package:frontend/features/auth/data/models/auth/user.dart';
+import 'package:skora/features/room/data/models/room_model.dart';
+import 'package:skora/features/auth/data/models/auth/user.dart';
 
 enum SesiUjianStatus {
   ongoing,

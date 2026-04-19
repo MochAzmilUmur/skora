@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animated_login/animated_login.dart';
-import 'package:frontend/core/widgets/dialog_builder.dart';
-import 'package:frontend/features/auth/data/auth_service.dart';
+import 'package:skora/core/widgets/dialog_builder.dart';
+import 'package:skora/features/auth/data/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

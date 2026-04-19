@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:frontend/features/auth/data/models/auth/user.dart';
-import 'package:frontend/core/network/api_client.dart';
-import 'package:frontend/core/utils/logger.dart';
+import 'package:skora/features/auth/data/models/auth/user.dart';
+import 'package:skora/core/network/api_client.dart';
+import 'package:skora/core/utils/logger.dart';
 
 class UserService {
   static Future<List<User>> getUsers() async {

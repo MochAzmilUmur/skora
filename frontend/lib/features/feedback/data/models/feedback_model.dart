@@ -1,5 +1,5 @@
-import 'package:frontend/features/ujian/data/models/hasil_ujian_model.dart';
-import 'package:frontend/features/auth/data/models/auth/user.dart';
+import 'package:skora/features/ujian/data/models/hasil_ujian_model.dart';
+import 'package:skora/features/auth/data/models/auth/user.dart';
 
 class FeedbackModel {
   final int id;

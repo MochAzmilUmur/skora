@@ -1,5 +1,5 @@
 import 'package:dartz/dartz.dart';
-import 'package:frontend/core/error/failures.dart';
+import 'package:skora/core/error/failures.dart';
 import '../../data/models/models.dart';
 
 abstract class RoomRepository {

@@ -7,7 +7,7 @@ abstract class RoomRemoteDataSource {
   Future<RoomModel> createRoom({
     required String roomName,
     required int durasi,
-    required String createdBy,
+    required int createdBy,
   });
 
   Future<List<RoomModel>> getRooms();
@@ -29,7 +29,7 @@ class RoomRemoteDataSourceImpl implements RoomRemoteDataSource {
   Future<RoomModel> createRoom({
     required String roomName,
     required int durasi,
-    required String createdBy,
+    required int createdBy,
   }) async {
     try {
       AppLogger.log('Creating room: $roomName', tag: 'RoomDataSource');

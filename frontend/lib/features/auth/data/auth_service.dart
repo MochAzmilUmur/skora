@@ -3,6 +3,7 @@ import 'package:animated_login/animated_login.dart';
 import '../../../core/widgets/dialog_builder.dart';
 import '../../../core/network/user_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/auth_storage_service.dart';
 
 class AuthService {
   const AuthService(this.context);
@@ -24,6 +25,10 @@ class AuthService {
       
       if (user != null) {
         AppLogger.log('Login successful for: ${user.email}', tag: 'AuthService');
+        
+        // Save user data to storage
+        await AuthStorageService.saveUser(user);
+        AppLogger.log('User data saved to storage', tag: 'AuthService');
         
         if (!context.mounted) {
           AppLogger.log('Context not mounted before navigation', tag: 'AuthService');

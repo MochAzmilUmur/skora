@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../room/presentation/screens/create_exam_room_screen.dart';
+import '../room/presentation/screens/exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
 import '../room/data/repositories/room_repository_impl.dart';
 import '../room/data/datasources/room_remote_datasource.dart';
+import '../../core/services/auth_storage_service.dart';
+import '../auth/data/models/auth/user.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,6 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   List<RoomModel> _rooms = [];
   bool _isLoading = false;
+  User? _currentUser;
   final _roomRepository = RoomRepositoryImpl(
     remoteDataSource: RoomRemoteDataSourceImpl(),
   );
@@ -23,7 +27,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _loadRooms();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload user data when dependencies change
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = await AuthStorageService.getCurrentUser();
+    debugPrint('📱 Loading user data: ${user?.nama} (ID: ${user?.idUsers})');
+    
+    if (mounted && user != null) {
+      setState(() => _currentUser = user);
+      debugPrint('✅ User updated: ${_currentUser?.nama}');
+    } else {
+      debugPrint('⚠️ No user found in storage');
+    }
   }
 
   Future<void> _loadRooms() async {
@@ -88,6 +112,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _navigateToRoomDetails(RoomModel room) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExamRoomScreen(room: room),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,17 +153,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: const Icon(Icons.person, color: Colors.white),
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Welcome back,',
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
               Text(
-                'Alex Morgan',
-                style: TextStyle(
+                _currentUser?.nama ?? 'User',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -407,9 +440,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                // TODO: Navigate to room details
-              },
+              onPressed: () => _navigateToRoomDetails(room),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isUpcoming ? Colors.transparent : Colors.blue,
                 foregroundColor: isUpcoming ? Colors.blue : Colors.white,

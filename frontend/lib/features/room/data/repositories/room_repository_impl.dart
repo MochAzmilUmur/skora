@@ -39,7 +39,7 @@ class RoomRepositoryImpl implements RoomRepository {
       final room = await remoteDataSource.createRoom(
         roomName: roomName,
         durasi: durasi,
-        createdBy: createdBy.toString(),
+        createdBy: createdBy,
       );
       return Right(room);
     } catch (e) {

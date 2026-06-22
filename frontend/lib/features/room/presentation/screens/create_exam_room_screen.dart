@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../data/repositories/room_repository_impl.dart';
 import '../../data/datasources/room_remote_datasource.dart';
+import '../../../../core/services/auth_storage_service.dart';
+import '../../../../core/utils/logger.dart';
 
 class CreateExamRoomScreen extends StatefulWidget {
   const CreateExamRoomScreen({Key? key}) : super(key: key);
@@ -204,8 +206,25 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
       // Extract duration number from string (e.g., "60 Menit" -> 60)
       final durationMinutes = int.parse(_selectedDuration!.split(' ')[0]);
       
-      // TODO: Get actual user ID from auth service
-      const currentUserId = 1; // Temporary hardcoded user ID
+      // Get current user ID from storage
+      final currentUserId = await AuthStorageService.getUserId();
+      final currentUserName = await AuthStorageService.getUserName();
+      
+      AppLogger.log('Creating room with user ID: $currentUserId, name: $currentUserName', tag: 'CreateRoom');
+      
+      if (currentUserId == null) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User not logged in. Please login again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      AppLogger.log('Sending create room request: name=${_titleController.text.trim()}, durasi=$durationMinutes, createdBy=$currentUserId', tag: 'CreateRoom');
 
       final result = await _roomRepository.createRoom(
         roomName: _titleController.text.trim(),

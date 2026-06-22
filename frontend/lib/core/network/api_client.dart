@@ -8,7 +8,7 @@ class ApiClient {
   static String get baseUrl {
     if (Platform.isAndroid) {
       // Untuk device fisik Android, gunakan IP komputer
-      return 'http://10.10.10.247:8080/api';
+      return 'http://192.168.1.19:8080/api';
     }
     // Untuk emulator atau platform lain
     return 'http://localhost:8080/api';

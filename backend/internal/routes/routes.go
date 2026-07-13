@@ -1,13 +1,16 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"time"
+
 	"backend/internal/delivery/ws"
 	"backend/internal/handlers"
 	"backend/internal/infrastructure/socket"
+	"backend/internal/middleware"
 )
 
 func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
@@ -24,6 +27,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	}))
 
 	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db)
 	roomHandler := handlers.NewRoomHandler(db)
 	pertanyaanHandler := handlers.NewPertanyaanHandler(db)
@@ -37,8 +41,21 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 
 	api := r.Group("/api")
 	{
+		// Auth routes (public)
+		auth := api.Group("/auth")
+		{
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/reset-password", authHandler.ResetPassword)
+		}
+
+		// Protected routes
+		protected := api.Group("")
+		protected.Use(middleware.JWTAuth())
+
 		// User routes
-		users := api.Group("/users")
+		users := protected.Group("/users")
 		{
 			users.POST("", userHandler.CreateUser)
 			users.GET("", userHandler.GetUsers)
@@ -48,17 +65,23 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		}
 
 		// Room routes
-		rooms := api.Group("/rooms")
+		rooms := protected.Group("/rooms")
 		{
 			rooms.POST("", roomHandler.CreateRoom)
 			rooms.GET("", roomHandler.GetRooms)
+			rooms.POST("/join", roomHandler.JoinRoom)
+			rooms.GET("/code/:code", roomHandler.GetRoomByCode)
+			rooms.GET("/user/:user_id", roomHandler.GetRoomsByUser)
 			rooms.GET("/:id", roomHandler.GetRoom)
 			rooms.PUT("/:id", roomHandler.UpdateRoom)
 			rooms.DELETE("/:id", roomHandler.DeleteRoom)
+			rooms.GET("/:id/participants", roomHandler.GetParticipants)
+			rooms.POST("/:id/participants", roomHandler.AddParticipant)
+			rooms.DELETE("/:id/participants/:participant_id", roomHandler.RemoveParticipant)
 		}
 
 		// Pertanyaan routes
-		pertanyaans := api.Group("/pertanyaans")
+		pertanyaans := protected.Group("/pertanyaans")
 		{
 			pertanyaans.POST("", pertanyaanHandler.CreatePertanyaan)
 			pertanyaans.GET("", pertanyaanHandler.GetPertanyaans)
@@ -68,7 +91,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		}
 
 		// Sesi Ujian routes
-		sesiUjians := api.Group("/sesi-ujians")
+		sesiUjians := protected.Group("/sesi-ujians")
 		{
 			sesiUjians.POST("", sesiUjianHandler.CreateSesiUjian)
 			sesiUjians.GET("", sesiUjianHandler.GetSesiUjians)
@@ -78,7 +101,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		}
 
 		// Answer routes
-		answers := api.Group("/answers")
+		answers := protected.Group("/answers")
 		{
 			answers.POST("", answerHandler.CreateAnswer)
 			answers.GET("", answerHandler.GetAnswers)
@@ -88,7 +111,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		}
 
 		// Hasil Ujian routes
-		hasilUjians := api.Group("/hasil-ujians")
+		hasilUjians := protected.Group("/hasil-ujians")
 		{
 			hasilUjians.POST("", hasilUjianHandler.CreateHasilUjian)
 			hasilUjians.GET("", hasilUjianHandler.GetHasilUjians)
@@ -98,7 +121,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		}
 
 		// Feedback routes
-		api.POST("/feedback", feedbackHandler.SendFeedback)
+		protected.POST("/feedback", feedbackHandler.SendFeedback)
 	}
 
 	return r

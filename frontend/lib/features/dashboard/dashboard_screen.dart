@@ -18,7 +18,9 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   List<RoomModel> _rooms = [];
+  List<RoomModel> _filteredRooms = [];
   bool _isLoading = false;
+  bool _showActive = true;
   User? _currentUser;
   final _roomRepository = RoomRepositoryImpl(
     remoteDataSource: RoomRemoteDataSourceImpl(),
@@ -27,97 +29,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _loadRooms();
+    _loadUserData().then((_) => _loadRooms());
+    _checkSessionTimeout();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reload user data when dependencies change
-    _loadUserData();
+  Future<void> _checkSessionTimeout() async {
+    final valid = await AuthStorageService.isTokenValid();
+    if (!valid && mounted) {
+      await AuthStorageService.clearUser();
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await AuthStorageService.clearUser();
+      if (mounted) Navigator.of(context).pushReplacementNamed('/');
+    }
   }
 
   Future<void> _loadUserData() async {
     final user = await AuthStorageService.getCurrentUser();
-    debugPrint('📱 Loading user data: ${user?.nama} (ID: ${user?.idUsers})');
-    
     if (mounted && user != null) {
       setState(() => _currentUser = user);
-      debugPrint('✅ User updated: ${_currentUser?.nama}');
-    } else {
-      debugPrint('⚠️ No user found in storage');
     }
   }
 
   Future<void> _loadRooms() async {
     setState(() => _isLoading = true);
-    
-    final result = await _roomRepository.getRooms();
-    
+
+    final userId = _currentUser?.idUsers;
+    final result = userId != null
+        ? await _roomRepository.getRoomsByUser(userId)
+        : await _roomRepository.getRooms();
+
     if (!mounted) return;
-    
+
     result.fold(
       (failure) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load rooms: ${failure.message}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Failed to load rooms: ${failure.message}'), backgroundColor: Colors.red),
         );
       },
       (rooms) {
         setState(() {
           _rooms = rooms;
+          _applyFilter();
           _isLoading = false;
         });
       },
     );
   }
 
+  void _applyFilter() {
+    final now = DateTime.now();
+    if (_showActive) {
+      _filteredRooms = _rooms.where((r) => r.startDate == null || !r.startDate!.isAfter(now)).toList();
+    } else {
+      _filteredRooms = _rooms.where((r) => r.startDate != null && r.startDate!.isAfter(now)).toList();
+    }
+  }
+
   Future<void> _navigateToCreateRoom() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CreateExamRoomScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreateExamRoomScreen()),
     );
-    
-    if (result == true) {
-      _loadRooms();
-    }
+    if (result == true) _loadRooms();
   }
 
   Future<void> _scanQRCode() async {
     final roomCode = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const QRScannerScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const QRScannerScreen()),
     );
-
-    if (roomCode != null && mounted) {
-      _joinRoomWithCode(roomCode);
-    }
+    if (roomCode != null && mounted) _joinRoomWithCode(roomCode);
   }
 
-  void _joinRoomWithCode(String roomCode) {
-    // TODO: Implement join room API call
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Joining room: $roomCode'),
-        backgroundColor: Colors.green,
+  Future<void> _joinRoomWithCode(String roomCode) async {
+    final userId = _currentUser?.idUsers;
+    if (userId == null) return;
+
+    final result = await _roomRepository.joinRoom(roomCode: roomCode, userId: userId);
+    if (!mounted) return;
+
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to join: ${failure.message}'), backgroundColor: Colors.red),
+      ),
+      (data) {
+        final room = RoomModel.fromJson(data['room'] as Map<String, dynamic>);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Joined room: ${room.roomName}'), backgroundColor: Colors.green),
+        );
+        _navigateToRoomDetails(room);
+      },
+    );
+  }
+
+  Future<void> _deleteRoom(RoomModel room) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Room'),
+        content: Text('Delete "${room.roomName}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
+    if (confirm != true) return;
+
+    final result = await _roomRepository.deleteRoom(room.idRoom);
+    if (!mounted) return;
+    result.fold(
+      (f) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: ${f.message}'), backgroundColor: Colors.red),
+      ),
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Room deleted'), backgroundColor: Colors.green),
+        );
+        _loadRooms();
+      },
+    );
+  }
+
+  Future<void> _editRoom(RoomModel room) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CreateExamRoomScreen(editRoom: room)),
+    );
+    if (result == true) _loadRooms();
   }
 
   void _navigateToRoomDetails(RoomModel room) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ExamRoomScreen(room: room),
-      ),
+      MaterialPageRoute(builder: (context) => ExamRoomScreen(room: room)),
     );
   }
 
@@ -157,25 +225,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Welcome back,',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
+              const Text('Welcome back,', style: TextStyle(color: Colors.grey, fontSize: 14)),
               Text(
                 _currentUser?.nama ?? 'User',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {},
-        ),
+        IconButton(icon: const Icon(Icons.notifications_outlined, color: Colors.white), onPressed: () {}),
+        IconButton(icon: const Icon(Icons.logout, color: Colors.white), onPressed: _logout),
       ],
     );
   }
@@ -184,14 +243,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -224,39 +276,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildActionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-  }) {
+  Widget _buildActionCard({required IconData icon, required String title, required String subtitle, required Color color}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A2942),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF1A2942), borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 32),
           const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12,
-            ),
-          ),
+          Text(subtitle, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
         ],
       ),
     );
@@ -268,41 +299,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            const Text(
-              'Your Exams',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Your Exams', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const Spacer(),
             TextButton(
-              onPressed: () {},
-              child: const Text('Active', style: TextStyle(color: Colors.blue)),
+              onPressed: () => setState(() { _showActive = true; _applyFilter(); }),
+              child: Text('Active', style: TextStyle(color: _showActive ? Colors.blue : Colors.grey[600])),
             ),
             TextButton(
-              onPressed: () {},
-              child: Text('History', style: TextStyle(color: Colors.grey[600])),
+              onPressed: () => setState(() { _showActive = false; _applyFilter(); }),
+              child: Text('History', style: TextStyle(color: !_showActive ? Colors.blue : Colors.grey[600])),
             ),
           ],
         ),
         const SizedBox(height: 16),
         _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.blue),
-              )
-            : _rooms.isEmpty
+            ? const Center(child: CircularProgressIndicator(color: Colors.blue))
+            : _filteredRooms.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _rooms.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final room = _rooms[index];
-                      return _buildExamCard(room: room);
-                    },
+                    itemCount: _filteredRooms.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) => _buildExamCard(room: _filteredRooms[index]),
                   ),
       ],
     );
@@ -311,35 +330,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A2942),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF1A2942), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: Colors.grey[600],
-          ),
+          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[600]),
           const SizedBox(height: 16),
-          Text(
-            'No Exams Yet',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text('No Exams Yet', style: TextStyle(color: Colors.grey[400], fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            'Create your first exam room to get started',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          Text('Create your first exam room to get started', style: TextStyle(color: Colors.grey[600], fontSize: 14), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _navigateToCreateRoom,
@@ -349,9 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ],
@@ -361,7 +357,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildExamCard({required RoomModel room}) {
     final now = DateTime.now();
-    final isUpcoming = room.createdAt.isAfter(now);
+    final isUpcoming = room.startDate != null && room.startDate!.isAfter(now);
     final statusColor = isUpcoming ? Colors.orange : Colors.green;
     final status = isUpcoming ? 'Upcoming' : 'Active';
 
@@ -370,37 +366,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1A2942),
         borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: statusColor, width: 4),
-        ),
+        border: Border(left: BorderSide(color: statusColor, width: 4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.school_outlined,
-                color: statusColor,
-                size: 24,
-              ),
+              Icon(Icons.school_outlined, color: statusColor, size: 24),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      room.roomName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      room.user?.nama ?? 'Unknown',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                    ),
+                    Text(room.roomName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(room.user?.nama ?? 'Unknown', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                   ],
                 ),
               ),
@@ -411,10 +391,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: statusColor),
                 ),
-                child: Text(
-                  status,
-                  style: TextStyle(color: statusColor, fontSize: 12),
-                ),
+                child: Text(status, style: TextStyle(color: statusColor, fontSize: 12)),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                color: const Color(0xFF1E293B),
+                onSelected: (value) {
+                  if (value == 'edit') _editRoom(room);
+                  if (value == 'delete') _deleteRoom(room);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, color: Colors.white, size: 18), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white))])),
+                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
+                ],
               ),
             ],
           ),
@@ -424,18 +413,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icon(Icons.access_time, color: Colors.grey[600], size: 16),
               const SizedBox(width: 4),
               Text(
-                '${room.createdAt.day}/${room.createdAt.month}/${room.createdAt.year}',
+                room.startDate != null
+                    ? '${room.startDate!.day}/${room.startDate!.month}/${room.startDate!.year}'
+                    : '${room.createdAt.day}/${room.createdAt.month}/${room.createdAt.year}',
                 style: TextStyle(color: Colors.grey[400], fontSize: 12),
               ),
               const SizedBox(width: 16),
               Icon(Icons.timer_outlined, color: Colors.grey[600], size: 16),
               const SizedBox(width: 4),
-              Text(
-                '${room.durasi} mins',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12),
-              ),
+              Text('${room.durasi} mins', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
             ],
           ),
+          if (room.roomCode.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.vpn_key_outlined, color: Colors.grey[600], size: 16),
+                const SizedBox(width: 4),
+                Text(room.roomCode, style: TextStyle(color: Colors.grey[400], fontSize: 12, letterSpacing: 2)),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -446,9 +444,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 foregroundColor: isUpcoming ? Colors.blue : Colors.white,
                 side: isUpcoming ? const BorderSide(color: Colors.blue) : null,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(isUpcoming ? 'View Details' : 'Enter Room'),
             ),
@@ -462,12 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1A2942),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
       ),
       child: BottomNavigationBar(
         currentIndex: _selectedIndex,

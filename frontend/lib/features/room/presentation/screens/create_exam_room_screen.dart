@@ -1,12 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../data/models/models.dart';
 import '../../data/repositories/room_repository_impl.dart';
 import '../../data/datasources/room_remote_datasource.dart';
 import '../../../../core/services/auth_storage_service.dart';
-import '../../../../core/utils/logger.dart';
 
 class CreateExamRoomScreen extends StatefulWidget {
-  const CreateExamRoomScreen({Key? key}) : super(key: key);
+  final RoomModel? editRoom;
+  const CreateExamRoomScreen({Key? key, this.editRoom}) : super(key: key);
 
   @override
   State<CreateExamRoomScreen> createState() => _CreateExamRoomScreenState();
@@ -24,6 +25,25 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
   Set<String> _selectedQuestionTypes = {};
   bool _shuffleQuestions = false;
   bool _isLoading = false;
+
+  bool get _isEditMode => widget.editRoom != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditMode) {
+      final r = widget.editRoom!;
+      _titleController.text = r.roomName;
+      _descriptionController.text = r.description;
+      _selectedDuration = '${r.durasi} Menit';
+      if (!_durationOptions.contains(_selectedDuration)) _selectedDuration = _durationOptions[1];
+      _startDate = r.startDate;
+      if (r.questionTypes.isNotEmpty) {
+        _selectedQuestionTypes = r.questionTypes.split(',').toSet();
+      }
+      _shuffleQuestions = r.shuffleQuestions;
+    }
+  }
 
   final List<String> _durationOptions = [
     '30 Menit',
@@ -94,8 +114,8 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Create Exam Room',
+        title: Text(
+          _isEditMode ? 'Edit Exam Room' : 'Create Exam Room',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -139,16 +159,9 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
           ),
         ),
         child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Text(
-                'Create Room',
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : Text(
+                _isEditMode ? 'Save Changes' : 'Create Room',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -203,34 +216,40 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Extract duration number from string (e.g., "60 Menit" -> 60)
       final durationMinutes = int.parse(_selectedDuration!.split(' ')[0]);
-      
-      // Get current user ID from storage
       final currentUserId = await AuthStorageService.getUserId();
-      final currentUserName = await AuthStorageService.getUserName();
-      
-      AppLogger.log('Creating room with user ID: $currentUserId, name: $currentUserName', tag: 'CreateRoom');
-      
+
       if (currentUserId == null) {
         if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User not logged in. Please login again.'),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('User not logged in. Please login again.'), backgroundColor: Colors.red),
         );
         return;
       }
 
-      AppLogger.log('Sending create room request: name=${_titleController.text.trim()}, durasi=$durationMinutes, createdBy=$currentUserId', tag: 'CreateRoom');
-
-      final result = await _roomRepository.createRoom(
-        roomName: _titleController.text.trim(),
-        durasi: durationMinutes,
-        createdBy: currentUserId,
-      );
+      late final dynamic result;
+      if (_isEditMode) {
+        result = await _roomRepository.updateRoom(
+          roomId: widget.editRoom!.idRoom,
+          roomName: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          durasi: durationMinutes,
+          startDate: _startDate,
+          questionTypes: _selectedQuestionTypes.join(','),
+          shuffleQuestions: _shuffleQuestions,
+        );
+      } else {
+        result = await _roomRepository.createRoom(
+          roomName: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          durasi: durationMinutes,
+          startDate: _startDate,
+          questionTypes: _selectedQuestionTypes.join(','),
+          shuffleQuestions: _shuffleQuestions,
+          createdBy: currentUserId,
+        );
+      }
 
       if (!mounted) return;
 

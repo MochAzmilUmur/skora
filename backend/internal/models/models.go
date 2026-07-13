@@ -19,12 +19,17 @@ func (User) TableName() string {
 
 
 type Room struct {
-	IDRoom    uuid.UUID `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
-	RoomName  string    `json:"room_name" gorm:"column:room_name"`
-	Durasi    int       `json:"durasi" gorm:"column:durasi"`
-	CreatedBy int       `json:"created_by" gorm:"column:created_by"`
-	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
-	User      User      `json:"user" gorm:"foreignKey:CreatedBy;references:IDUsers"`
+	IDRoom        uuid.UUID  `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
+	RoomName      string     `json:"room_name" gorm:"column:room_name"`
+	Description   string     `json:"description" gorm:"column:description"`
+	Durasi        int        `json:"durasi" gorm:"column:durasi"`
+	StartDate     *time.Time `json:"start_date" gorm:"column:start_date"`
+	QuestionTypes string     `json:"question_types" gorm:"column:question_types"`
+	ShuffleQ      bool       `json:"shuffle_questions" gorm:"column:shuffle_questions"`
+	RoomCode      string     `json:"room_code" gorm:"column:room_code;uniqueIndex"`
+	CreatedBy     int        `json:"created_by" gorm:"column:created_by"`
+	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at"`
+	User          User       `json:"user" gorm:"foreignKey:CreatedBy;references:IDUsers"`
 }
 func (Room) TableName() string {
 	return "room"
@@ -34,7 +39,7 @@ type RoomParticipant struct {
 	ID       int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	RoomID   uuid.UUID `json:"room_id" gorm:"type:uuid;column:room_id"`
 	UserID   int       `json:"user_id" gorm:"column:user_id"`
-	Role     string    `json:"role" gorm:"type:enum('asesor','pelajar');column:role"`
+	Role     string    `json:"role" gorm:"column:role"`
 	JoinedAt time.Time `json:"joined_at" gorm:"column:joined_at"`
 	Room     Room      `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	User     User      `json:"user" gorm:"foreignKey:UserID;references:IDUsers"`

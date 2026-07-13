@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/services/auth_storage_service.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 
@@ -12,15 +13,49 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Skora',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const LoginScreen(),
+      home: const _SplashRouter(),
       routes: {
+        '/': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardScreen(),
       },
+    );
+  }
+}
+
+class _SplashRouter extends StatefulWidget {
+  const _SplashRouter();
+
+  @override
+  State<_SplashRouter> createState() => _SplashRouterState();
+}
+
+class _SplashRouterState extends State<_SplashRouter> {
+  @override
+  void initState() {
+    super.initState();
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    final loggedIn = await AuthStorageService.isLoggedIn();
+    if (!mounted) return;
+    if (loggedIn) {
+      Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0A1628),
+      body: Center(child: CircularProgressIndicator(color: Colors.blue)),
     );
   }
 }

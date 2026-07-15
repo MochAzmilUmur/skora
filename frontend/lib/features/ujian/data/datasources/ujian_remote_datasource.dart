@@ -2,7 +2,11 @@ import '../../../../features/auth/data/models/models.dart';
 
 abstract class UjianRemoteDataSource {
   // Pertanyaan
-  Future<List<PertanyaanModel>> getPertanyaanByRoom(String roomId);
+  Future<List<PertanyaanModel>> getPertanyaanByRoom(
+    String roomId, {
+    int page = 1,
+    int limit = 20,
+  });
   
   Future<PertanyaanModel> getPertanyaanById(int pertanyaanId);
   
@@ -12,7 +16,13 @@ abstract class UjianRemoteDataSource {
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   });
-  
+
+  Future<PertanyaanModel> updatePertanyaan({
+    required int pertanyaanId,
+    required String pertanyaanText,
+    required TypePertanyaan typePertanyaan,
+  });
+
   Future<void> deletePertanyaan(int pertanyaanId);
   
   // Sesi Ujian

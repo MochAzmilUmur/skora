@@ -11,9 +11,16 @@ class UjianRepositoryImpl implements UjianRepository {
 
   @override
   Future<Either<Failure, List<PertanyaanModel>>> getPertanyaanByRoom(
-      String roomId) async {
+    String roomId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
-      final pertanyaans = await remoteDataSource.getPertanyaanByRoom(roomId);
+      final pertanyaans = await remoteDataSource.getPertanyaanByRoom(
+        roomId,
+        page: page,
+        limit: limit,
+      );
       return Right(pertanyaans);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -56,6 +63,24 @@ class UjianRepositoryImpl implements UjianRepository {
     try {
       await remoteDataSource.deletePertanyaan(pertanyaanId);
       return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PertanyaanModel>> updatePertanyaan({
+    required int pertanyaanId,
+    required String pertanyaanText,
+    required TypePertanyaan typePertanyaan,
+  }) async {
+    try {
+      final result = await remoteDataSource.updatePertanyaan(
+        pertanyaanId: pertanyaanId,
+        pertanyaanText: pertanyaanText,
+        typePertanyaan: typePertanyaan,
+      );
+      return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

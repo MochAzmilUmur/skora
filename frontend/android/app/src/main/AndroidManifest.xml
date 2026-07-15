@@ -5,7 +5,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     
     <application
-        android:label="frontend"
+        android:label="skora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

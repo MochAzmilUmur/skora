@@ -78,6 +78,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			rooms.GET("/:id/participants", roomHandler.GetParticipants)
 			rooms.POST("/:id/participants", roomHandler.AddParticipant)
 			rooms.DELETE("/:id/participants/:participant_id", roomHandler.RemoveParticipant)
+			rooms.GET("/:id/pertanyaans", pertanyaanHandler.GetPertanyaansByRoom)
 		}
 
 		// Pertanyaan routes

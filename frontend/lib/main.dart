@@ -3,6 +3,7 @@ import 'core/services/auth_storage_service.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 
+
 void main() {
   runApp(const MyApp());
 }
@@ -18,9 +19,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const _SplashRouter(),
+      initialRoute:  '/',
       routes: {
-        '/': (context) => const LoginScreen(),
+        '/': (context) => const _SplashRouter(),
+        '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardScreen(),
       },
     );
@@ -47,7 +49,7 @@ class _SplashRouterState extends State<_SplashRouter> {
     if (loggedIn) {
       Navigator.of(context).pushReplacementNamed('/dashboard');
     } else {
-      Navigator.of(context).pushReplacementNamed('/');
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 

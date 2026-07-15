@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/widgets/protected_screen.dart';
 import '../../data/models/models.dart';
+import '../../../ujian/presentation/screens/soal_management_screen.dart';
 
 class ExamRoomScreen extends StatefulWidget {
   final RoomModel room;
@@ -179,6 +180,15 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
       const SnackBar(
         content: Text('Room settings - Coming soon'),
         backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _manageQuestions() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SoalManagementScreen(room: widget.room),
       ),
     );
   }
@@ -755,40 +765,56 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          flex: 1,
+        // Kelola Soal button
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings_outlined, size: 20),
-            label: const Text('Settings'),
+            onPressed: _manageQuestions,
+            icon: const Icon(Icons.quiz_outlined, size: 20),
+            label: const Text('Kelola Soal'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Color(0xFF334155)),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              foregroundColor: Colors.blue,
+              side: const BorderSide(color: Colors.blue),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: ElevatedButton.icon(
-            onPressed: _startSession,
-            icon: const Icon(Icons.arrow_forward, size: 20),
-            label: const Text('Start Session'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3B82F6),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: OutlinedButton.icon(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_outlined, size: 20),
+                label: const Text('Settings'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: _startSession,
+                icon: const Icon(Icons.arrow_forward, size: 20),
+                label: const Text('Start Session'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -4,7 +4,11 @@ import '../../../../features/auth/data/models/models.dart';
 
 abstract class UjianRepository {
   // Pertanyaan
-  Future<Either<Failure, List<PertanyaanModel>>> getPertanyaanByRoom(String roomId);
+  Future<Either<Failure, List<PertanyaanModel>>> getPertanyaanByRoom(
+    String roomId, {
+    int page = 1,
+    int limit = 20,
+  });
   
   Future<Either<Failure, PertanyaanModel>> getPertanyaanById(int pertanyaanId);
   
@@ -14,7 +18,13 @@ abstract class UjianRepository {
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   });
-  
+
+  Future<Either<Failure, PertanyaanModel>> updatePertanyaan({
+    required int pertanyaanId,
+    required String pertanyaanText,
+    required TypePertanyaan typePertanyaan,
+  });
+
   Future<Either<Failure, void>> deletePertanyaan(int pertanyaanId);
   
   // Sesi Ujian

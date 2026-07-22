@@ -61,6 +61,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			users.GET("", userHandler.GetUsers)
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
+			users.POST("/:id/change-password", userHandler.ChangePassword)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
 
@@ -123,6 +124,11 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 
 		// Feedback routes
 		protected.POST("/feedback", feedbackHandler.SendFeedback)
+		protected.GET("/feedback", feedbackHandler.GetFeedbackByHasil)
+		protected.DELETE("/feedback/:id", feedbackHandler.DeleteFeedback)
+
+		// Rekap nilai per room
+		protected.GET("/rooms/:id/hasil", hasilUjianHandler.GetHasilByRoom)
 	}
 
 	return r

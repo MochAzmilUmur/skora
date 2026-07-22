@@ -163,3 +163,26 @@ func (h *HasilUjianHandler) DeleteHasilUjian(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Hasil ujian deleted successfully"})
 }
+
+// GetHasilByRoom returns all hasil ujian for a room (rekap nilai peserta).
+func (h *HasilUjianHandler) GetHasilByRoom(c *gin.Context) {
+	roomID := c.Param("id")
+	if roomID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "room id required"})
+		return
+	}
+
+	// Join: hasil_ujian → sesi_ujian → room
+	var hasils []models.HasilUjian
+	if err := h.DB.
+		Preload("SesiUjian.User").
+		Preload("SesiUjian.Room").
+		Joins("JOIN sesi_ujian ON sesi_ujian.id = hasil_ujian.session_id").
+		Where("sesi_ujian.room_id = ?", roomID).
+		Find(&hasils).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, hasils)
+}

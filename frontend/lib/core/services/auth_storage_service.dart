@@ -84,4 +84,10 @@ class AuthStorageService {
     final user = await getCurrentUser();
     return user?.email;
   }
+
+  /// Update cached user data (after profile edit)
+  static Future<void> updateCachedUser(User updated) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUser, jsonEncode(updated.toJson()));
+  }
 }

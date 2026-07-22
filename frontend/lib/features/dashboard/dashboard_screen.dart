@@ -7,6 +7,7 @@ import '../room/data/repositories/room_repository_impl.dart';
 import '../room/data/datasources/room_remote_datasource.dart';
 import '../../core/services/auth_storage_service.dart';
 import '../auth/data/models/auth/user.dart';
+import '../profile/presentation/screens/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -194,21 +195,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A1628),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 30),
-              _buildQuickActions(),
-              const SizedBox(height: 30),
-              _buildExamsSection(),
-            ],
-          ),
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            _buildHomeTab(),
+            _buildHomeTab(), // Exams tab — reuse home for now
+            _buildHomeTab(), // Results tab — reuse home for now
+            ProfileScreen(onLogout: () async {
+              await AuthStorageService.clearUser();
+              if (mounted) Navigator.of(context).pushReplacementNamed('/');
+            }),
+          ],
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildHomeTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 30),
+          _buildQuickActions(),
+          const SizedBox(height: 30),
+          _buildExamsSection(),
+        ],
+      ),
     );
   }
 

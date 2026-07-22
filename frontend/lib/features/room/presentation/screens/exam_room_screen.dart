@@ -6,6 +6,7 @@ import '../../../../core/services/auth_storage_service.dart';
 import '../../data/models/models.dart';
 import '../../../ujian/presentation/screens/soal_management_screen.dart';
 import '../../../ujian/presentation/screens/exam_session_screen.dart';
+import '../../../ujian/presentation/screens/rekam_nilai_screen.dart';
 
 class ExamRoomScreen extends StatefulWidget {
   final RoomModel room;
@@ -191,6 +192,15 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => SoalManagementScreen(room: widget.room),
+      ),
+    );
+  }
+
+  void _viewRekamNilai() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RekamNilaiScreen(room: widget.room),
       ),
     );
   }
@@ -787,6 +797,22 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.blue,
               side: const BorderSide(color: Colors.blue),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Rekap Nilai button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _viewRekamNilai,
+            icon: const Icon(Icons.bar_chart, size: 20),
+            label: const Text('Rekap Nilai Peserta'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF94A3B8),
+              side: const BorderSide(color: Color(0xFF334155)),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),

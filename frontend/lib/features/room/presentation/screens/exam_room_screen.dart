@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/widgets/protected_screen.dart';
+import '../../../../core/services/auth_storage_service.dart';
 import '../../data/models/models.dart';
 import '../../../ujian/presentation/screens/soal_management_screen.dart';
+import '../../../ujian/presentation/screens/exam_session_screen.dart';
 
 class ExamRoomScreen extends StatefulWidget {
   final RoomModel room;
@@ -226,11 +228,19 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
     );
   }
 
-  void _confirmStartSession() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exam session started successfully!'),
-        backgroundColor: Colors.green,
+  void _confirmStartSession() async {
+    final user = await AuthStorageService.getCurrentUser();
+    if (user == null || !mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExamSessionScreen(
+          roomId: widget.room.idRoom,
+          roomName: widget.room.roomName,
+          durasiMenit: widget.room.durasi,
+          userId: user.idUsers,
+        ),
       ),
     );
   }

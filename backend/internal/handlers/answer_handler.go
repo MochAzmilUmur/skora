@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	"backend/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"backend/internal/models"
 )
 
 type AnswerHandler struct {
@@ -36,8 +37,18 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 }
 
 func (h *AnswerHandler) GetAnswers(c *gin.Context) {
+	sessionID := c.Query("session_id")
+
+	query := h.DB.Preload("SesiUjian").Preload("Pertanyaan").Preload("QuestionOption")
+	if sessionID != "" {
+		sid, err := strconv.Atoi(sessionID)
+		if err == nil {
+			query = query.Where("session_id = ?", sid)
+		}
+	}
+
 	var answers []models.Answer
-	if err := h.DB.Preload("SesiUjian").Preload("Pertanyaan").Preload("QuestionOption").Find(&answers).Error; err != nil {
+	if err := query.Find(&answers).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

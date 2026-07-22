@@ -1,156 +1,210 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/widgets/protected_screen.dart';
+import '../../../../features/auth/data/models/models.dart';
+import '../../data/repositories/ujian_repository_impl.dart';
+import '../../data/datasources/ujian_remote_datasource_impl.dart';
+import '../providers/exam_session_notifier.dart';
+import 'exam_result_screen.dart';
 
-class ExamSessionScreen extends StatefulWidget {
+/// Entry point — wraps the screen in its own ChangeNotifierProvider so the
+/// notifier lifetime matches the screen lifetime.
+class ExamSessionScreen extends StatelessWidget {
   final String roomId;
   final String roomName;
+  final int durasiMenit;
+  final int userId;
 
   const ExamSessionScreen({
     Key? key,
     required this.roomId,
     required this.roomName,
+    required this.durasiMenit,
+    required this.userId,
   }) : super(key: key);
 
   @override
-  State<ExamSessionScreen> createState() => _ExamSessionScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ExamSessionNotifier(
+        UjianRepositoryImpl(
+          remoteDataSource: UjianRemoteDataSourceImpl(),
+        ),
+      )..init(
+          roomId: roomId,
+          userId: userId,
+          durasiMenit: durasiMenit,
+        ),
+      child: _ExamSessionView(roomName: roomName),
+    );
+  }
 }
 
-class _ExamSessionScreenState extends State<ExamSessionScreen> {
-  int _currentQuestionIndex = 0;
-  final int _totalQuestions = 40;
-  int _remainingTime = 3600;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted && _remainingTime > 0) {
-        setState(() => _remainingTime--);
-        _startTimer();
-      }
-    });
-  }
-
-  String _formatTime(int seconds) {
-    final hours = seconds ~/ 3600;
-    final minutes = (seconds % 3600) ~/ 60;
-    final secs = seconds % 60;
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-  }
+class _ExamSessionView extends StatelessWidget {
+  final String roomName;
+  const _ExamSessionView({required this.roomName});
 
   @override
   Widget build(BuildContext context) {
+    final notifier = context.watch<ExamSessionNotifier>();
+
+    // Navigate to result when done
+    if (notifier.status == ExamStatus.completed && notifier.hasil != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ExamResultScreen(hasil: notifier.hasil!),
+          ),
+        );
+      });
+    }
+
     return ProtectedScreen(
       enableScreenshotProtection: true,
       enableDataLeakageProtection: true,
-      child: WillPopScope(
-        onWillPop: () async {
-          final shouldExit = await _showExitConfirmation();
-          return shouldExit ?? false;
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          final exit = await _showExitDialog(context);
+          if (exit == true && context.mounted) {
+            Navigator.of(context).pop();
+          }
         },
         child: Scaffold(
           backgroundColor: const Color(0xFF0F172A),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF1E293B),
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.security, size: 12, color: Colors.red),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Protected',
-                        style: TextStyle(color: Colors.red, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.roomName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _remainingTime < 300 ? Colors.red.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _remainingTime < 300 ? Colors.red : Colors.blue,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.timer,
-                      size: 18,
-                      color: _remainingTime < 300 ? Colors.red : Colors.blue,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatTime(_remainingTime),
-                      style: TextStyle(
-                        color: _remainingTime < 300 ? Colors.red : Colors.blue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+          appBar: _buildAppBar(context, notifier, roomName),
+          body: switch (notifier.status) {
+            ExamStatus.loading => const Center(
+                child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
               ),
-            ],
-          ),
-          body: Column(
-            children: [
-              _buildProgressBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildQuestionCard(),
-                      const SizedBox(height: 24),
-                      _buildNavigationButtons(),
-                    ],
-                  ),
-                ),
+            ExamStatus.error => _ErrorView(message: notifier.errorMessage),
+            _ => Column(
+                children: [
+                  _ProgressBar(notifier: notifier),
+                  Expanded(child: _QuestionBody(notifier: notifier)),
+                  _BottomBar(notifier: notifier),
+                ],
               ),
-            ],
-          ),
-          bottomNavigationBar: _buildBottomBar(),
+          },
         ),
       ),
     );
   }
 
-  Widget _buildProgressBar() {
-    final progress = (_currentQuestionIndex + 1) / _totalQuestions;
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    ExamSessionNotifier notifier,
+    String name,
+  ) {
+    final timeCritical = notifier.isTimeCritical;
+    return AppBar(
+      backgroundColor: const Color(0xFF1E293B),
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.red),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.security, size: 12, color: Colors.red),
+                SizedBox(width: 4),
+                Text('Protected', style: TextStyle(color: Colors.red, fontSize: 10)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: (timeCritical ? Colors.red : Colors.blue).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: timeCritical ? Colors.red : Colors.blue),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.timer,
+                  size: 18, color: timeCritical ? Colors.red : Colors.blue),
+              const SizedBox(width: 6),
+              Text(
+                notifier.formattedTime,
+                style: TextStyle(
+                  color: timeCritical ? Colors.red : Colors.blue,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<bool?> _showExitDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Text('Exit Exam?', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: const Text(
+          'Your answers are saved. The timer will continue running.',
+          style: TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Progress bar ───────────────────────────────────────────────────────────
+
+class _ProgressBar extends StatelessWidget {
+  final ExamSessionNotifier notifier;
+  const _ProgressBar({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = notifier.totalQuestions;
+    final current = notifier.currentIndex + 1;
+    final progress = total == 0 ? 0.0 : current / total;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       color: const Color(0xFF1E293B),
@@ -159,20 +213,14 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Text('Question $current of $total',
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
               Text(
-                'Question ${_currentQuestionIndex + 1} of $_totalQuestions',
+                '${notifier.answeredCount}/$total Answered',
                 style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                '${(progress * 100).toInt()}% Complete',
-                style: const TextStyle(
-                  color: Color(0xFF3B82F6),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+                    color: Color(0xFF3B82F6),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -182,7 +230,8 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: const Color(0xFF334155),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
               minHeight: 6,
             ),
           ),
@@ -190,8 +239,46 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
       ),
     );
   }
+}
 
-  Widget _buildQuestionCard() {
+// ── Question body ──────────────────────────────────────────────────────────
+
+class _QuestionBody extends StatelessWidget {
+  final ExamSessionNotifier notifier;
+  const _QuestionBody({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    final soal = notifier.currentSoal;
+    if (soal == null) {
+      return const Center(
+        child: Text('Tidak ada soal.', style: TextStyle(color: Colors.white)),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _QuestionCard(soal: soal, notifier: notifier),
+          const SizedBox(height: 24),
+          _NavigationButtons(notifier: notifier),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuestionCard extends StatelessWidget {
+  final PertanyaanModel soal;
+  final ExamSessionNotifier notifier;
+  const _QuestionCard({required this.soal, required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    final isBookmarked = notifier.isBookmarked(soal.id);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -205,59 +292,103 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
+                  color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.blue),
                 ),
-                child: const Text(
-                  'Multiple Choice',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Text(
+                  soal.typePertanyaan == TypePertanyaan.multipleChoice
+                      ? 'Pilihan Ganda'
+                      : 'Essay',
+                  style: const TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500),
                 ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Color(0xFF94A3B8)),
-                onPressed: () {},
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  color: isBookmarked ? Colors.amber : const Color(0xFF94A3B8),
+                ),
+                onPressed: () => notifier.toggleBookmark(soal.id),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'What is the primary purpose of the Skora application?',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Text(
+            soal.pertanyaanText,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
-          _buildOption('A', 'To manage online competency exams'),
-          const SizedBox(height: 12),
-          _buildOption('B', 'To create social media content'),
-          const SizedBox(height: 12),
-          _buildOption('C', 'To track student attendance'),
-          const SizedBox(height: 12),
-          _buildOption('D', 'To schedule meetings'),
+          if (soal.typePertanyaan == TypePertanyaan.multipleChoice)
+            _MultipleChoiceOptions(soal: soal, notifier: notifier)
+          else
+            _EssayInput(soal: soal, notifier: notifier),
         ],
       ),
     );
   }
+}
 
-  Widget _buildOption(String label, String text) {
+class _MultipleChoiceOptions extends StatelessWidget {
+  final PertanyaanModel soal;
+  final ExamSessionNotifier notifier;
+  const _MultipleChoiceOptions({required this.soal, required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = notifier.selectedOption(soal.id);
+    const labels = ['A', 'B', 'C', 'D', 'E'];
+
+    return Column(
+      children: [
+        for (int i = 0; i < soal.questionOptions.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _OptionTile(
+            label: labels[i % labels.length],
+            text: soal.questionOptions[i].optionText,
+            isSelected: selected == soal.questionOptions[i].id,
+            onTap: () =>
+                notifier.selectOption(soal.id, soal.questionOptions[i].id),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  final String label;
+  final String text;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _OptionTile({
+    required this.label,
+    required this.text,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: isSelected
+              ? Colors.blue.withValues(alpha: 0.15)
+              : const Color(0xFF0F172A),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF334155)),
+          border: Border.all(
+              color: isSelected ? Colors.blue : const Color(0xFF334155)),
         ),
         child: Row(
           children: [
@@ -265,16 +396,14 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: const Color(0xFF334155),
+                color: isSelected ? Colors.blue : const Color(0xFF334155),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   label,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -282,77 +411,143 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 14,
-                ),
+                style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                    fontSize: 14),
               ),
             ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.blue, size: 20),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildNavigationButtons() {
+class _EssayInput extends StatefulWidget {
+  final PertanyaanModel soal;
+  final ExamSessionNotifier notifier;
+  const _EssayInput({required this.soal, required this.notifier});
+
+  @override
+  State<_EssayInput> createState() => _EssayInputState();
+}
+
+class _EssayInputState extends State<_EssayInput> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(
+      text: widget.notifier.textAnswer(widget.soal.id) ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _ctrl,
+      maxLines: 5,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Tulis jawaban Anda di sini...',
+        hintStyle: const TextStyle(color: Color(0xFF64748B)),
+        filled: true,
+        fillColor: const Color(0xFF0F172A),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF334155)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF334155)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.blue),
+        ),
+      ),
+      onChanged: (v) => widget.notifier.setTextAnswer(widget.soal.id, v),
+    );
+  }
+}
+
+// ── Navigation buttons ─────────────────────────────────────────────────────
+
+class _NavigationButtons extends StatelessWidget {
+  final ExamSessionNotifier notifier;
+  const _NavigationButtons({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: _currentQuestionIndex > 0
-                ? () => setState(() => _currentQuestionIndex--)
-                : null,
+            onPressed: notifier.currentIndex > 0 ? notifier.previous : null,
             icon: const Icon(Icons.arrow_back, size: 18),
-            label: const Text('Previous'),
+            label: const Text('Sebelumnya'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
               side: const BorderSide(color: Color(0xFF334155)),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: _currentQuestionIndex < _totalQuestions - 1
-                ? () => setState(() => _currentQuestionIndex++)
-                : null,
+            onPressed:
+                notifier.currentIndex < notifier.totalQuestions - 1
+                    ? notifier.next
+                    : null,
             icon: const Icon(Icons.arrow_forward, size: 18),
-            label: const Text('Next'),
+            label: const Text('Selanjutnya'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3B82F6),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildBottomBar() {
+// ── Bottom bar (grid + submit) ─────────────────────────────────────────────
+
+class _BottomBar extends StatelessWidget {
+  final ExamSessionNotifier notifier;
+  const _BottomBar({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    final submitting = notifier.status == ExamStatus.submitting;
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E293B),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
       ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => _showQuestionGrid(context, notifier),
               icon: const Icon(Icons.grid_view, size: 18),
               label: const Text('Question Grid'),
               style: OutlinedButton.styleFrom(
@@ -360,24 +555,31 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
                 side: const BorderSide(color: Color(0xFF334155)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: _showSubmitConfirmation,
-              icon: const Icon(Icons.check_circle, size: 18),
-              label: const Text('Submit Exam'),
+              onPressed: submitting
+                  ? null
+                  : () => _showSubmitDialog(context, notifier),
+              icon: submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.check_circle, size: 18),
+              label: Text(submitting ? 'Menyimpan...' : 'Submit Ujian'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),
@@ -386,80 +588,244 @@ class _ExamSessionScreenState extends State<ExamSessionScreen> {
     );
   }
 
-  Future<bool?> _showExitConfirmation() {
-    return showDialog<bool>(
+  void _showQuestionGrid(
+      BuildContext context, ExamSessionNotifier notifier) {
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            SizedBox(width: 12),
-            Text('Exit Exam?', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to exit? Your progress will be saved but the timer will continue.',
-          style: TextStyle(color: Color(0xFF94A3B8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Exit'),
-          ),
-        ],
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (_) => _QuestionGridSheet(notifier: notifier),
     );
   }
 
-  void _showSubmitConfirmation() {
-    showDialog(
+  Future<void> _showSubmitDialog(
+      BuildContext context, ExamSessionNotifier notifier) async {
+    final unanswered =
+        notifier.totalQuestions - notifier.answeredCount;
+    final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         title: const Row(
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 28),
             SizedBox(width: 12),
-            Text('Submit Exam?', style: TextStyle(color: Colors.white)),
+            Text('Submit Ujian?',
+                style: TextStyle(color: Colors.white)),
           ],
         ),
-        content: const Text(
-          'Are you sure you want to submit your exam? You cannot change your answers after submission.',
-          style: TextStyle(color: Color(0xFF94A3B8)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Anda tidak dapat mengubah jawaban setelah submit.',
+              style: TextStyle(color: Color(0xFF94A3B8)),
+            ),
+            if (unanswered > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber,
+                        color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$unanswered soal belum dijawab.',
+                        style: const TextStyle(
+                            color: Colors.orange, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Review'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _submitExam();
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             child: const Text('Submit'),
           ),
         ],
       ),
     );
-  }
 
-  void _submitExam() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exam submitted successfully!'),
-        backgroundColor: Colors.green,
+    if (confirm == true && context.mounted) {
+      notifier.submitExam();
+    }
+  }
+}
+
+// ── Question grid bottom sheet ─────────────────────────────────────────────
+
+class _QuestionGridSheet extends StatelessWidget {
+  final ExamSessionNotifier notifier;
+  const _QuestionGridSheet({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: notifier,
+      child: Consumer<ExamSessionNotifier>(
+        builder: (ctx, n, _) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Text('Question Grid',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildLegend(),
+              const SizedBox(height: 16),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: n.soal.length,
+                itemBuilder: (_, i) {
+                  final s = n.soal[i];
+                  final answered = n.isAnswered(s.id);
+                  final bookmarked = n.isBookmarked(s.id);
+                  final isCurrent = n.currentIndex == i;
+
+                  Color bg;
+                  if (isCurrent) {
+                    bg = Colors.blue;
+                  } else if (answered) {
+                    bg = Colors.green;
+                  } else if (bookmarked) {
+                    bg = Colors.amber;
+                  } else {
+                    bg = const Color(0xFF334155);
+                  }
+
+                  return GestureDetector(
+                    onTap: () {
+                      n.goTo(i);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: bg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
     );
-    Navigator.pop(context);
+  }
+
+  Widget _buildLegend() {
+    const items = [
+      (Colors.green, 'Dijawab'),
+      (Colors.blue, 'Sekarang'),
+      (Colors.amber, 'Ditandai'),
+      (Color(0xFF334155), 'Belum'),
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: items
+          .map((item) => Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration:
+                        BoxDecoration(color: item.$1, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(item.$2,
+                      style: const TextStyle(
+                          color: Color(0xFF94A3B8), fontSize: 11)),
+                ],
+              ))
+          .toList(),
+    );
+  }
+}
+
+// ── Error view ─────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  const _ErrorView({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            const SizedBox(height: 16),
+            const Text('Terjadi Kesalahan',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(message,
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              child: const Text('Kembali'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

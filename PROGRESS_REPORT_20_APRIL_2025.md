@@ -1,7 +1,7 @@
 # 📊 Laporan Progress Pengembangan Aplikasi Skora
-**Tanggal Update**: 21 April 2025  
+**Tanggal Update**: 22 Juli 2026  
 **Versi Aplikasi**: 1.0.0+1  
-**Status Keseluruhan**: 🟡 Dalam Pengembangan (±62% Selesai)
+**Status Keseluruhan**: 🟡 Dalam Pengembangan (±75% Selesai)
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Komponen | Teknologi | Status |
 |---|---|---|
-| Backend | Go (Gin Framework) | 🟡 Berjalan, auth & room lengkap |
+| Backend | Go (Gin Framework) | 🟡 Berjalan, auth & room lengkap, ujian terhubung |
 | Database | PostgreSQL | ✅ Terhubung |
 | Frontend | Flutter (Android) | 🟡 Berjalan, auth & room lengkap |
 | Containerization | Docker & Docker Compose | ✅ Tersedia |
@@ -125,19 +125,31 @@
 - [ ] **Tipe soal Coding** — belum ada UI
 - [ ] **Import soal dari file (CSV/Excel)** — belum ada
 
-### 🎓 Pelaksanaan Ujian
-- [ ] **Load soal dari API** — `ExamSessionScreen` masih menggunakan data dummy hardcoded
-- [ ] **Simpan jawaban ke API** — jawaban tidak dikirim ke backend
-- [ ] **Timer dari durasi room** — timer hardcoded 3600 detik, bukan dari data room
-- [ ] **Question Grid** — tombol "Question Grid" belum berfungsi
-- [ ] **Bookmark soal** — tombol bookmark belum berfungsi
-- [ ] **Auto-submit saat waktu habis** — belum ada
-- [ ] **Navigasi soal dari grid** — belum ada
-- [ ] **Tampilkan soal dari database** — belum ada
+### 🎓 Pelaksanaan Ujian *(Diimplementasikan 22 Juli 2026)*
+- [x] **Load soal dari API** — `ExamSessionScreen` load dari `GET /rooms/:id/pertanyaans`
+- [x] **Simpan jawaban ke API** — setiap pilih opsi/isi essay langsung POST ke `/answers` (fire-and-forget)
+- [x] **Timer dari durasi room** — `durasiMenit` diambil dari `RoomModel.durasi`, bukan hardcoded
+- [x] **Question Grid** — bottom sheet dengan grid 8-kolom, klik navigasi ke soal
+- [x] **Bookmark soal** — toggle bookmark, soal ditandai kuning di grid
+- [x] **Auto-submit saat waktu habis** — timer trigger `submitExam(isTimeout: true)` saat `remainingSeconds == 0`
+- [x] **Navigasi soal dari grid** — tap nomor di Question Grid, tutup sheet, pindah soal
+- [x] **Tampilkan soal dari database** — PertanyaanModel dari API, multiple choice + essay
+- [x] **ExamSessionNotifier** — ChangeNotifier: state session, soal, jawaban, timer, bookmark, grid nav
+- [x] **ExamResultScreen** — tampilkan skor, benar/salah, lulus/tidak lulus, kembali dashboard
+
+### 🧮 Backend Penilaian *(Diimplementasikan 22 Juli 2026)*
+- [x] **Auto-calculate hasil ujian** — `POST /api/hasil-ujians` otomatis hitung skor dari jawaban di DB
+- [x] **Idempotent hasil** — duplicate session_id mengembalikan hasil yang sudah ada (tidak duplikat)
+- [x] **Soft delete soal** — `Pertanyaan` model punya `deleted_at` (GORM), hapus tidak rusak referensi jawaban
+- [x] **Pagination soal per room** — `GET /rooms/:id/pertanyaans?page=1&limit=20`
+- [x] **Filter answers by session** — `GET /answers?session_id=X`
+- [x] **Filter sesi by user** — `GET /sesi-ujians?user_id=X`
+- [x] **Filter hasil by session** — `GET /hasil-ujians?session_id=X`
+- [x] **End session sets end_time** — update status completed/timeout sekaligus isi `end_time`
 
 ### 📊 Penilaian & Hasil Ujian
-- [ ] **Penilaian otomatis** — tidak ada logika penilaian
-- [ ] **Halaman hasil ujian** — tidak ada screen hasil
+- [x] **Penilaian otomatis** — `POST /hasil-ujians` hitung skor dari correct answers di DB *(baru)*
+- [x] **Halaman hasil ujian** — `ExamResultScreen` tampilkan skor, benar/salah, lulus/tidak *(baru)*
 - [ ] **Rekap nilai per peserta** — tidak ada
 - [ ] **Export hasil ke PDF/Excel** — tidak ada
 - [ ] **Grafik/statistik hasil** — tidak ada
@@ -166,7 +178,9 @@
 - [ ] **Responsive layout untuk tablet** — belum dioptimasi
 
 ### 🔧 Backend
-- [ ] **Pagination** — semua endpoint mengembalikan semua data tanpa limit
+- [x] **Soft delete soal** — `deleted_at` di tabel `pertanyaan`, riwayat jawaban aman *(baru)*
+- [x] **Pagination soal** — `GET /rooms/:id/pertanyaans?page&limit` *(baru)*
+- [x] **Filter query params** — answers by session, sesi by user, hasil by session *(baru)*
 - [ ] **Input validation** — validasi input di handler masih minimal
 - [ ] **Unit test** — tidak ada test di backend
 
@@ -212,10 +226,10 @@ ujikompetensi/
 ## 🗺️ Prioritas Pengembangan Selanjutnya
 
 ### 🔴 Prioritas Tinggi (Harus Segera)
-1. **UI tambah/edit/hapus soal** — asesor perlu bisa kelola soal per room
-2. **Load soal dari API di ExamSessionScreen** — fitur inti ujian
-3. **Simpan jawaban ke API** — fitur inti ujian
-4. **Timer dari durasi room** — bukan hardcoded
+1. ~~**UI tambah/edit/hapus soal** — asesor perlu bisa kelola soal per room~~ ✅ Selesai
+2. ~~**Load soal dari API di ExamSessionScreen**~~ ✅ Selesai
+3. ~~**Simpan jawaban ke API**~~ ✅ Selesai
+4. ~~**Timer dari durasi room**~~ ✅ Selesai
 5. **Participants di ExamRoomScreen dari API** — ganti data dummy
 
 ### 🟡 Prioritas Sedang
@@ -274,12 +288,12 @@ ujikompetensi/
 | Autentikasi | 90% | JWT, bcrypt, logout, session timeout ✅ |
 | Dashboard | 85% | Filter user/Active/History, edit/delete ✅ |
 | Manajemen Room | 80% | Create/Edit/Delete/Join/Participants backend ✅ |
-| Bank Soal | 5% | Hanya endpoint backend, UI belum ada |
-| Pelaksanaan Ujian | 15% | UI skeleton ada, semua data dummy |
-| Penilaian & Hasil | 5% | Hanya model & endpoint, UI belum ada |
+| Bank Soal | 85% | Soft delete, pagination, CRUD UI + datasource impl ✅ |
+| Pelaksanaan Ujian | 80% | Load soal, jawaban, timer, grid, bookmark, auto-submit ✅ |
+| Penilaian & Hasil | 60% | Auto-calculate backend, ExamResultScreen ✅ |
 | Feedback Real-time | 20% | Backend WebSocket ada, UI belum |
 | Profil & Pengaturan | 0% | Belum dimulai |
-| **Total Keseluruhan** | **~62%** | |
+| **Total Keseluruhan** | **~75%** | |
 
 ---
 
@@ -302,4 +316,4 @@ Kolom baru di tabel `room` yang perlu di-migrate:
 
 ---
 
-*Laporan ini di-update pada 21 April 2025 setelah sesi pengerjaan fitur autentikasi & manajemen room.*
+*Laporan ini di-update pada 22 Juli 2026 setelah sesi pengerjaan fitur pelaksanaan ujian (ExamSessionScreen) dan penilaian otomatis.*

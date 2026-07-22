@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	"backend/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"backend/internal/models"
 )
 
 type SesiUjianHandler struct {
@@ -37,8 +38,19 @@ func (h *SesiUjianHandler) CreateSesiUjian(c *gin.Context) {
 }
 
 func (h *SesiUjianHandler) GetSesiUjians(c *gin.Context) {
+	userID := c.Query("user_id")
+
 	var sesis []models.SesiUjian
-	if err := h.DB.Preload("Room").Preload("User").Find(&sesis).Error; err != nil {
+	query := h.DB.Preload("Room").Preload("User")
+
+	if userID != "" {
+		uid, err := strconv.Atoi(userID)
+		if err == nil {
+			query = query.Where("user_id = ?", uid)
+		}
+	}
+
+	if err := query.Find(&sesis).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -75,16 +87,26 @@ func (h *SesiUjianHandler) UpdateSesiUjian(c *gin.Context) {
 		return
 	}
 
-	if err := c.ShouldBindJSON(&sesi); err != nil {
+	var input struct {
+		Status string `json:"status"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.DB.Save(&sesi).Error; err != nil {
+	updates := map[string]interface{}{"status": input.Status}
+	if input.Status == "completed" || input.Status == "timeout" {
+		now := time.Now()
+		updates["end_time"] = now
+	}
+
+	if err := h.DB.Model(&sesi).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.DB.Preload("Room").Preload("User").First(&sesi, id)
 	c.JSON(http.StatusOK, sesi)
 }
 

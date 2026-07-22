@@ -125,28 +125,7 @@
 - [ ] **Tipe soal Coding** — belum ada UI
 - [ ] **Import soal dari file (CSV/Excel)** — belum ada
 
-### 🎓 Pelaksanaan Ujian *(Diimplementasikan 22 Juli 2026)*
-- [x] **Load soal dari API** — `ExamSessionScreen` load dari `GET /rooms/:id/pertanyaans`
-- [x] **Simpan jawaban ke API** — setiap pilih opsi/isi essay langsung POST ke `/answers` (fire-and-forget)
-- [x] **Timer dari durasi room** — `durasiMenit` diambil dari `RoomModel.durasi`, bukan hardcoded
-- [x] **Question Grid** — bottom sheet dengan grid 8-kolom, klik navigasi ke soal
-- [x] **Bookmark soal** — toggle bookmark, soal ditandai kuning di grid
-- [x] **Auto-submit saat waktu habis** — timer trigger `submitExam(isTimeout: true)` saat `remainingSeconds == 0`
-- [x] **Navigasi soal dari grid** — tap nomor di Question Grid, tutup sheet, pindah soal
-- [x] **Tampilkan soal dari database** — PertanyaanModel dari API, multiple choice + essay
-- [x] **ExamSessionNotifier** — ChangeNotifier: state session, soal, jawaban, timer, bookmark, grid nav
-- [x] **ExamResultScreen** — tampilkan skor, benar/salah, lulus/tidak lulus, kembali dashboard
-
-### 🧮 Backend Penilaian *(Diimplementasikan 22 Juli 2026)*
-- [x] **Auto-calculate hasil ujian** — `POST /api/hasil-ujians` otomatis hitung skor dari jawaban di DB
-- [x] **Idempotent hasil** — duplicate session_id mengembalikan hasil yang sudah ada (tidak duplikat)
-- [x] **Soft delete soal** — `Pertanyaan` model punya `deleted_at` (GORM), hapus tidak rusak referensi jawaban
-- [x] **Pagination soal per room** — `GET /rooms/:id/pertanyaans?page=1&limit=20`
-- [x] **Filter answers by session** — `GET /answers?session_id=X`
-- [x] **Filter sesi by user** — `GET /sesi-ujians?user_id=X`
-- [x] **Filter hasil by session** — `GET /hasil-ujians?session_id=X`
-- [x] **End session sets end_time** — update status completed/timeout sekaligus isi `end_time`
-
+5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
 ### 📊 Penilaian & Hasil Ujian
 - [x] **Penilaian otomatis** — `POST /hasil-ujians` hitung skor dari correct answers di DB *(baru)*
 - [x] **Halaman hasil ujian** — `ExamResultScreen` tampilkan skor, benar/salah, lulus/tidak *(baru)*

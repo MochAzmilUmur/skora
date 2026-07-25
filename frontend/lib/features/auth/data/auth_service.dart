@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:animated_login/animated_login.dart';
+import 'package:provider/provider.dart';
 import '../../../core/widgets/dialog_builder.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/auth_storage_service.dart';
+import '../../../core/services/websocket_service.dart';
 import '../data/models/auth/user.dart';
 
 class AuthService {
@@ -34,6 +36,8 @@ class AuthService {
         AppLogger.log('Login successful: ${user.email}', tag: 'AuthService');
 
         if (!context.mounted) return null;
+        // Connect WebSocket immediately after login
+        context.read<WebSocketService>().connect();
         Navigator.of(context).pushReplacementNamed('/dashboard');
         return null;
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../room/presentation/screens/create_exam_room_screen.dart';
 import '../room/presentation/screens/exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
@@ -6,7 +7,10 @@ import '../room/data/models/models.dart';
 import '../room/data/repositories/room_repository_impl.dart';
 import '../room/data/datasources/room_remote_datasource.dart';
 import '../../core/services/auth_storage_service.dart';
+import '../../core/services/websocket_service.dart';
+import '../../core/widgets/notification_overlay.dart';
 import '../auth/data/models/auth/user.dart';
+import '../notifications/presentation/screens/notifications_screen.dart';
 import '../profile/presentation/screens/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -59,7 +63,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     if (confirm == true) {
       await AuthStorageService.clearUser();
-      if (mounted) Navigator.of(context).pushReplacementNamed('/');
+      if (mounted) {
+        context.read<WebSocketService>().disconnect();
+        Navigator.of(context).pushReplacementNamed('/');
+      }
     }
   }
 
@@ -192,23 +199,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A1628),
-      body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            _buildHomeTab(),
-            _buildHomeTab(), // Exams tab — reuse home for now
-            _buildHomeTab(), // Results tab — reuse home for now
-            ProfileScreen(onLogout: () async {
-              await AuthStorageService.clearUser();
-              if (mounted) Navigator.of(context).pushReplacementNamed('/');
-            }),
-          ],
+    final wsService = context.watch<WebSocketService>();
+    return NotificationOverlay(
+      wsService: wsService,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A1628),
+        body: SafeArea(
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: [
+              _buildHomeTab(),
+              _buildHomeTab(), // Exams tab — reuse home for now
+              _buildHomeTab(), // Results tab — reuse home for now
+              ProfileScreen(onLogout: () async {
+                await AuthStorageService.clearUser();
+                if (mounted) {
+                  context.read<WebSocketService>().disconnect();
+                  Navigator.of(context).pushReplacementNamed('/');
+                }
+              }),
+            ],
+          ),
         ),
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -229,6 +243,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeader() {
+    final wsService = context.watch<WebSocketService>();
+    final unread = wsService.unreadCount;
     return Row(
       children: [
         CircleAvatar(
@@ -249,7 +265,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        IconButton(icon: const Icon(Icons.notifications_outlined, color: Colors.white), onPressed: () {}),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationsScreen(wsService: wsService),
+                ),
+              ),
+            ),
+            if (unread > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      unread > 9 ? '9+' : '$unread',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         IconButton(icon: const Icon(Icons.logout, color: Colors.white), onPressed: _logout),
       ],
     );

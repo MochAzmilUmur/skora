@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
+	"backend/internal/infrastructure/socket"
 	"backend/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +14,27 @@ import (
 )
 
 type SesiUjianHandler struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	Hub *socket.Hub
 }
 
-func NewSesiUjianHandler(db *gorm.DB) *SesiUjianHandler {
-	return &SesiUjianHandler{DB: db}
+func NewSesiUjianHandler(db *gorm.DB, hub *socket.Hub) *SesiUjianHandler {
+	return &SesiUjianHandler{DB: db, Hub: hub}
+}
+
+// broadcastExamStarted notifies room creator that a student started the exam.
+func (h *SesiUjianHandler) broadcastExamStarted(sesi models.SesiUjian) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":       "exam_started",
+		"session_id": sesi.ID,
+		"room_id":    sesi.RoomID.String(),
+		"room_name":  sesi.Room.RoomName,
+		"user_id":    sesi.UserID,
+		"user_name":  sesi.User.Nama,
+		"started_at": sesi.StartTime,
+	})
+	// Notify room creator
+	h.Hub.SendToUser(sesi.Room.CreatedBy, payload)
 }
 
 func (h *SesiUjianHandler) CreateSesiUjian(c *gin.Context) {
@@ -33,6 +51,9 @@ func (h *SesiUjianHandler) CreateSesiUjian(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	h.DB.Preload("Room").Preload("User").First(&sesi, sesi.ID)
+	go h.broadcastExamStarted(sesi)
 
 	c.JSON(http.StatusCreated, sesi)
 }

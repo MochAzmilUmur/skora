@@ -73,3 +73,24 @@ func (h *Hub) IsOnline(userID int) bool {
 	_, ok := h.clients[userID]
 	return ok
 }
+
+// BroadcastToUsers mengirim pesan ke sejumlah userID sekaligus.
+// User yang tidak online akan diabaikan.
+func (h *Hub) BroadcastToUsers(userIDs []int, message []byte) {
+	h.mu.RLock()
+	targets := make([]*Client, 0, len(userIDs))
+	for _, id := range userIDs {
+		if c, ok := h.clients[id]; ok {
+			targets = append(targets, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range targets {
+		select {
+		case c.send <- message:
+		default:
+			go func(cl *Client) { h.Unregister <- cl }(c)
+		}
+	}
+}

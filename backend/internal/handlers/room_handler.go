@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
+	"backend/internal/infrastructure/socket"
 	"backend/internal/models"
 
 	"github.com/gin-gonic/gin"
@@ -15,16 +17,30 @@ import (
 )
 
 type RoomHandler struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	Hub *socket.Hub
 }
 
-func NewRoomHandler(db *gorm.DB) *RoomHandler {
-	return &RoomHandler{DB: db}
+func NewRoomHandler(db *gorm.DB, hub *socket.Hub) *RoomHandler {
+	return &RoomHandler{DB: db, Hub: hub}
 }
 
 func generateRoomCode() string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return fmt.Sprintf("%03d-%03d", r.Intn(1000), r.Intn(1000))
+}
+
+// roomParticipantUserIDs returns all participant userIDs for a room (excluding the caller).
+func (h *RoomHandler) roomParticipantUserIDs(roomID uuid.UUID, excludeUserID int) []int {
+	var participants []models.RoomParticipant
+	h.DB.Where("room_id = ?", roomID).Find(&participants)
+	ids := make([]int, 0, len(participants))
+	for _, p := range participants {
+		if p.UserID != excludeUserID {
+			ids = append(ids, p.UserID)
+		}
+	}
+	return ids
 }
 
 func (h *RoomHandler) CreateRoom(c *gin.Context) {
@@ -129,7 +145,6 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 		return
 	}
 
-	// Jangan overwrite room_code dan created_at
 	room.IDRoom = roomID
 	if err := h.DB.Save(&room).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -175,6 +190,7 @@ func (h *RoomHandler) GetParticipants(c *gin.Context) {
 }
 
 // JoinRoom — POST /api/rooms/join
+// Broadcasts "participant_joined" to the room creator via WebSocket.
 func (h *RoomHandler) JoinRoom(c *gin.Context) {
 	var req struct {
 		RoomCode string `json:"room_code" binding:"required"`
@@ -191,7 +207,7 @@ func (h *RoomHandler) JoinRoom(c *gin.Context) {
 	}
 
 	var room models.Room
-	if err := h.DB.Where("room_code = ?", req.RoomCode).First(&room).Error; err != nil {
+	if err := h.DB.Preload("User").Where("room_code = ?", req.RoomCode).First(&room).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
@@ -199,6 +215,7 @@ func (h *RoomHandler) JoinRoom(c *gin.Context) {
 	// Cek sudah join sebelumnya
 	var existing models.RoomParticipant
 	if h.DB.Where("room_id = ? AND user_id = ?", room.IDRoom, req.UserID).First(&existing).Error == nil {
+		h.DB.Preload("User").First(&existing, existing.ID)
 		c.JSON(http.StatusOK, gin.H{"message": "Already joined", "room": room, "participant": existing})
 		return
 	}
@@ -215,7 +232,26 @@ func (h *RoomHandler) JoinRoom(c *gin.Context) {
 	}
 
 	h.DB.Preload("User").First(&participant, participant.ID)
+
+	// Real-time: notify room creator that a participant joined
+	var joinerUser models.User
+	h.DB.First(&joinerUser, req.UserID)
+	go h.broadcastParticipantJoined(room, joinerUser)
+
 	c.JSON(http.StatusCreated, gin.H{"room": room, "participant": participant})
+}
+
+func (h *RoomHandler) broadcastParticipantJoined(room models.Room, joiner models.User) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":      "participant_joined",
+		"room_id":   room.IDRoom.String(),
+		"room_name": room.RoomName,
+		"user_id":   joiner.IDUsers,
+		"user_name": joiner.Nama,
+		"joined_at": time.Now(),
+	})
+	// Notify room creator
+	h.Hub.SendToUser(room.CreatedBy, payload)
 }
 
 // AddParticipant — POST /api/rooms/:id/participants

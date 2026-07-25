@@ -154,9 +154,9 @@
 - [ ] Upload foto profil
 
 ### 🔔 Notifikasi & Real-time
-- [ ] Notifikasi push — tombol notifikasi di dashboard belum berfungsi
-- [ ] Real-time peserta masuk room — WebSocket ada tapi UI tidak update
-- [ ] Real-time status ujian
+- [x] Notifikasi push — tombol notifikasi di dashboard belum berfungsi
+- [x] Real-time peserta masuk room — WebSocket ada tapi UI tidak update
+- [x] Real-time status ujian
 
 ### 🎨 UI/UX
 - [ ] Halaman Results — tab Results di bottom nav reuse home, belum dedicated

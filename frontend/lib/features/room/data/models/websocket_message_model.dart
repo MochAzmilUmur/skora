@@ -1,13 +1,23 @@
 enum WebSocketMessageType {
   feedback,
+  participantJoined,
+  examStarted,
   notification,
   unknown;
 
   static WebSocketMessageType fromString(String type) {
-    return WebSocketMessageType.values.firstWhere(
-      (e) => e.name == type,
-      orElse: () => WebSocketMessageType.unknown,
-    );
+    switch (type) {
+      case 'feedback':
+        return WebSocketMessageType.feedback;
+      case 'participant_joined':
+        return WebSocketMessageType.participantJoined;
+      case 'exam_started':
+        return WebSocketMessageType.examStarted;
+      case 'notification':
+        return WebSocketMessageType.notification;
+      default:
+        return WebSocketMessageType.unknown;
+    }
   }
 }
 
@@ -78,5 +88,60 @@ class FeedbackWebSocketPayload {
   @override
   String toString() {
     return 'FeedbackWebSocketPayload(feedbackId: $feedbackId, asesorId: $asesorId)';
+  }
+}
+
+class ParticipantJoinedPayload {
+  final String roomId;
+  final String roomName;
+  final int userId;
+  final String userName;
+  final DateTime joinedAt;
+
+  const ParticipantJoinedPayload({
+    required this.roomId,
+    required this.roomName,
+    required this.userId,
+    required this.userName,
+    required this.joinedAt,
+  });
+
+  factory ParticipantJoinedPayload.fromJson(Map<String, dynamic> json) {
+    return ParticipantJoinedPayload(
+      roomId: json['room_id'] as String,
+      roomName: json['room_name'] as String,
+      userId: json['user_id'] as int,
+      userName: json['user_name'] as String,
+      joinedAt: DateTime.parse(json['joined_at'] as String),
+    );
+  }
+}
+
+class ExamStartedPayload {
+  final int sessionId;
+  final String roomId;
+  final String roomName;
+  final int userId;
+  final String userName;
+  final DateTime startedAt;
+
+  const ExamStartedPayload({
+    required this.sessionId,
+    required this.roomId,
+    required this.roomName,
+    required this.userId,
+    required this.userName,
+    required this.startedAt,
+  });
+
+  factory ExamStartedPayload.fromJson(Map<String, dynamic> json) {
+    return ExamStartedPayload(
+      sessionId: json['session_id'] as int,
+      roomId: json['room_id'] as String,
+      roomName: json['room_name'] as String,
+      userId: json['user_id'] as int,
+      userName: json['user_name'] as String,
+      startedAt: DateTime.parse(json['started_at'] as String),
+    );
   }
 }

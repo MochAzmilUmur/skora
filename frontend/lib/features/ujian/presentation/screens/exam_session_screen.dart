@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/services/websocket_service.dart';
 import '../../../../core/widgets/protected_screen.dart';
 import '../../../../features/auth/data/models/models.dart';
+import '../../../../features/room/data/models/websocket_message_model.dart';
 import '../../data/repositories/ujian_repository_impl.dart';
 import '../../data/datasources/ujian_remote_datasource_impl.dart';
 import '../providers/exam_session_notifier.dart';
@@ -40,9 +43,73 @@ class ExamSessionScreen extends StatelessWidget {
   }
 }
 
-class _ExamSessionView extends StatelessWidget {
+class _ExamSessionView extends StatefulWidget {
   final String roomName;
   const _ExamSessionView({required this.roomName});
+
+  @override
+  State<_ExamSessionView> createState() => _ExamSessionViewState();
+}
+
+class _ExamSessionViewState extends State<_ExamSessionView> {
+  StreamSubscription? _wsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Subscribe to WS stream for real-time feedback
+    final wsService = context.read<WebSocketService>();
+    _wsSub = wsService.messageStream.listen((msg) {
+      if (!mounted) return;
+      if (msg.type == WebSocketMessageType.feedback) {
+        final payload = FeedbackWebSocketPayload.fromJson(msg.data);
+        context.read<ExamSessionNotifier>().addFeedback(payload);
+        _showFeedbackSnackbar(payload);
+      }
+    });
+  }
+
+  void _showFeedbackSnackbar(FeedbackWebSocketPayload payload) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.comment_outlined, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Feedback dari Asesor',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  Text(
+                    payload.komentar,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E40AF),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _wsSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

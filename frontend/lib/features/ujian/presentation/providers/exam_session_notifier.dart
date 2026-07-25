@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../../features/auth/data/models/models.dart';
+import '../../../../features/room/data/models/websocket_message_model.dart';
 import '../../domain/repositories/ujian_repository.dart';
 
 enum ExamStatus { loading, active, submitting, completed, error }
@@ -24,6 +25,12 @@ class ExamSessionNotifier extends ChangeNotifier {
   final Map<int, int?> _selectedOptions = {};
   final Map<int, String?> _textAnswers = {};
   final Set<int> _bookmarked = {};
+
+  // ── Real-time feedback ─────────────────────────────────────────────────
+  final List<FeedbackWebSocketPayload> _incomingFeedbacks = [];
+  List<FeedbackWebSocketPayload> get incomingFeedbacks =>
+      List.unmodifiable(_incomingFeedbacks);
+  bool get hasFeedback => _incomingFeedbacks.isNotEmpty;
 
   // ── Timer ──────────────────────────────────────────────────────────────
   int _remainingSeconds = 0;
@@ -61,6 +68,18 @@ class ExamSessionNotifier extends ChangeNotifier {
   }
 
   bool get isTimeCritical => _remainingSeconds < 300;
+
+  // ── Real-time feedback ─────────────────────────────────────────────────
+  /// Called by ExamSessionScreen when a WS feedback message arrives.
+  void addFeedback(FeedbackWebSocketPayload payload) {
+    _incomingFeedbacks.add(payload);
+    notifyListeners();
+  }
+
+  void clearFeedbacks() {
+    _incomingFeedbacks.clear();
+    notifyListeners();
+  }
 
   // ── Init ───────────────────────────────────────────────────────────────
   /// Call once when entering exam screen.

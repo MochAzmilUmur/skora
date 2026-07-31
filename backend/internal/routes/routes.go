@@ -69,6 +69,8 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
 			users.POST("/:id/change-password", userHandler.ChangePassword)
+			users.PUT("/:id/role", userHandler.UpdateRole)
+			users.POST("/:id/avatar", userHandler.UploadAvatar)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
 

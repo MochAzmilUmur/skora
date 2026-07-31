@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skora/core/services/auth_storage_service.dart';
+import 'package:skora/core/widgets/user_avatar.dart';
 import 'package:skora/features/profile/data/datasources/user_remote_datasource.dart';
 import 'package:skora/features/profile/presentation/providers/profile_notifier.dart';
 
@@ -137,27 +138,12 @@ class _InfoTabState extends State<_InfoTab> {
       child: Column(
         children: [
           const SizedBox(height: 8),
-          // Avatar
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E3A5F),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.blue, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                (user?.nama.isNotEmpty == true)
-                    ? user!.nama[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+          UserAvatar(
+            avatarUrl: user?.avatarUrl,
+            name: user?.nama ?? '',
+            radius: 40,
+            isUploading: widget.notifier.uploadingAvatar,
+            onUpload: (file) => widget.notifier.uploadAvatar(file),
           ),
           const SizedBox(height: 12),
           if (user != null) ...[

@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../../../core/widgets/protected_screen.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/services/auth_storage_service.dart';
+import '../../../../core/services/websocket_service.dart';
+import '../../../../core/widgets/protected_screen.dart';
 import '../../data/models/models.dart';
 import '../../../ujian/presentation/screens/soal_management_screen.dart';
 import '../../../ujian/presentation/screens/exam_session_screen.dart';
@@ -22,46 +27,71 @@ class ExamRoomScreen extends StatefulWidget {
 
 class _ExamRoomScreenState extends State<ExamRoomScreen> {
   bool _isLoading = false;
-  int _participantsCount = 12;
+  List<RoomParticipantModel> _participants = [];
   int _questionsCount = 40;
-  String? _roomCode;
+  StreamSubscription<WebSocketMessage>? _wsSub;
+
+  String get _roomCode => widget.room.roomCode;
 
   @override
   void initState() {
     super.initState();
-    _loadRoomData();
+    _loadParticipants();
+    _subscribeWs();
   }
 
-  Future<void> _loadRoomData() async {
+  @override
+  void dispose() {
+    _wsSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadParticipants() async {
     setState(() => _isLoading = true);
-    
-    // TODO: Implement actual API calls
-    _roomCode = _generateRoomCode(widget.room.idRoom);
-    
-    setState(() => _isLoading = false);
-  }
-
-  String _generateRoomCode(String roomId) {
-    final hash = roomId.hashCode.abs();
-    final code = hash.toString().padLeft(6, '0').substring(0, 6);
-    return '${code.substring(0, 3)}-${code.substring(3, 6)}';
-  }
-
-  void _copyRoomCode() {
-    if (_roomCode != null) {
-      Clipboard.setData(ClipboardData(text: _roomCode!));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Room code copied to clipboard'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+    try {
+      final res = await ApiClient.get('/rooms/${widget.room.idRoom}/participants');
+      if (res.statusCode == 200 && mounted) {
+        final list = jsonDecode(res.body) as List<dynamic>;
+        setState(() {
+          _participants = list
+              .map((e) => RoomParticipantModel.fromJson(e as Map<String, dynamic>))
+              .toList();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _subscribeWs() {
+    _wsSub = WebSocketService().messageStream.listen((msg) {
+      if (!mounted) return;
+      final data = msg.data;
+      if (data['room_id'] != widget.room.idRoom) return;
+
+      if (msg.type == WebSocketMessageType.participantJoined) {
+        // Reload participants list to get full user data
+        _loadParticipants();
+      } else if (msg.type == WebSocketMessageType.examStarted) {
+        // Refresh to reflect updated participant status if needed
+        _loadParticipants();
+      }
+    });
+  }
+
+  void _copyRoomCode() {
+    Clipboard.setData(ClipboardData(text: _roomCode));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Room code copied to clipboard'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _showQRCode() {
-    if (_roomCode == null) return;
+    if (_roomCode.isEmpty) return;
 
     showDialog(
       context: context,
@@ -110,7 +140,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                _roomCode!,
+                _roomCode,
                 style: const TextStyle(
                   color: Color(0xFF3B82F6),
                   fontSize: 28,
@@ -141,7 +171,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _roomCode!));
+                    Clipboard.setData(ClipboardData(text: _roomCode));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Room code copied!'),
@@ -170,11 +200,13 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   }
 
   void _viewAllParticipants() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('View all participants - Coming soon'),
-        backgroundColor: Colors.blue,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (_) => _ParticipantListSheet(participants: _participants),
     );
   }
 
@@ -491,9 +523,9 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildStatCard(
-            icon: Icons.check_circle_outline,
-            label: 'Pass Rate',
-            value: '75%',
+            icon: Icons.people_outline,
+            label: 'Peserta',
+            value: _participants.length.toString(),
             color: Colors.green,
           ),
         ),
@@ -562,7 +594,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
             children: [
               Expanded(
                 child: Text(
-                  _roomCode ?? '---',
+                  _roomCode.isEmpty ? '---' : _roomCode,
                   style: const TextStyle(
                     color: Color(0xFF3B82F6),
                     fontSize: 32,
@@ -620,6 +652,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   }
 
   Widget _buildParticipantsSection() {
+    final count = _participants.length;
     return Column(
       children: [
         Row(
@@ -634,7 +667,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               ),
             ),
             TextButton(
-              onPressed: _viewAllParticipants,
+              onPressed: count > 0 ? _viewAllParticipants : null,
               child: const Text('View All'),
             ),
           ],
@@ -652,53 +685,44 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.green,
+                decoration: BoxDecoration(
+                  color: count > 0 ? Colors.green : Colors.grey,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$_participantsCount Students Waiting',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Text(
-                      'Class 10-A',
-                      style: TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF334155),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF475569)),
-                ),
-                child: Center(
-                  child: Text(
-                    '+$_participantsCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+                child: Text(
+                  count == 0
+                      ? 'Belum ada peserta'
+                      : '$count Peserta Terdaftar',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
+              if (count > 0)
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF334155),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF475569)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -852,6 +876,66 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _ParticipantListSheet extends StatelessWidget {
+  final List<RoomParticipantModel> participants;
+
+  const _ParticipantListSheet({required this.participants});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            children: [
+              Text(
+                'Daftar Peserta',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(color: Color(0xFF334155)),
+        Flexible(
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: participants.length,
+            itemBuilder: (_, i) {
+              final p = participants[i];
+              final name = p.user?.nama ?? 'User #${p.userId}';
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFF334155),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                title: Text(name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text(
+                  p.role.name,
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                ),
+                trailing: Text(
+                  '${p.joinedAt.hour.toString().padLeft(2, '0')}:${p.joinedAt.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }

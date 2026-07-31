@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"backend/internal/models"
 	"backend/internal/validator"
@@ -178,4 +181,89 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+// UpdateRole handles PUT /api/users/:id/role.
+func (h *UserHandler) UpdateRole(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+	callerID := c.GetInt("user_id")
+	if callerID != id {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	var req struct {
+		Role string `json:"role" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role is required"})
+		return
+	}
+	if req.Role != "asesor" && req.Role != "pelajar" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be asesor or pelajar"})
+		return
+	}
+
+	if err := h.DB.Model(&models.User{}).Where("id_users = ?", id).Update("role", req.Role).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var user models.User
+	h.DB.First(&user, id)
+	c.JSON(http.StatusOK, user)
+}
+
+// UploadAvatar handles POST /api/users/:id/avatar.
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+	callerID := c.GetInt("user_id")
+	if callerID != id {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("avatar")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "avatar file required"})
+		return
+	}
+	defer file.Close()
+
+	// Validate extension
+	ext := filepath.Ext(header.Filename)
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	if !allowed[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only jpg/jpeg/png/webp allowed"})
+		return
+	}
+
+	// Validate size ≤ 2 MB
+	if header.Size > 2*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file too large (max 2 MB)"})
+		return
+	}
+
+	filename := fmt.Sprintf("avatar_%d_%d%s", id, time.Now().UnixMilli(), ext)
+	dst := "./storage/uploads/" + filename
+	if err := c.SaveUploadedFile(header, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+		return
+	}
+
+	avatarURL := "/uploads/" + filename
+	if err := h.DB.Model(&models.User{}).Where("id_users = ?", id).Update("avatar_url", avatarURL).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var user models.User
+	h.DB.First(&user, id)
+	c.JSON(http.StatusOK, user)
 }

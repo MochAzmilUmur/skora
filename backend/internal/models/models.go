@@ -12,6 +12,8 @@ type User struct {
 	Nama         string    `json:"nama" gorm:"column:nama"`
 	Email        string    `json:"email" gorm:"column:email"`
 	PasswordHash string    `json:"-" gorm:"column:password_hash"`
+	Role         string    `json:"role" gorm:"column:role;default:pelajar"`
+	AvatarURL    string    `json:"avatar_url" gorm:"column:avatar_url"`
 	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at"`
 }
 

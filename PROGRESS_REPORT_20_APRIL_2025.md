@@ -124,6 +124,7 @@ Tabel `pertanyaan` juga belum punya kolom `created_at` dan `deleted_at`.
 - [x] Pagination — `GET /rooms/:id/pertanyaans?page&limit`
 - [x] **Upload gambar untuk soal** — `POST /api/upload`, `image_picker`, static file server (`/uploads`)
 - [x] **Import soal dari file Excel (`.xlsx`)** — `POST /api/rooms/:id/import-excel`, `file_picker`, `excelize` library
+- [x] Tipe soal Coding/File Upload
 
 ### 🎓 Pelaksanaan Ujian
 - [x] Load soal dari API — `GET /rooms/:id/pertanyaans`
@@ -145,6 +146,10 @@ Tabel `pertanyaan` juga belum punya kolom `created_at` dan `deleted_at`.
 - [x] Rekap nilai per peserta — `RekamNilaiScreen` tampilkan semua peserta per room dengan skor, status lulus/tidak lulus, rata-rata, pass rate
 - [x] Grafik/statistik sederhana — progress bar rata-rata + stat tiles (peserta/lulus/tidak lulus)
 - [x] Backend `GET /rooms/:id/hasil` — join hasil_ujian → sesi_ujian untuk rekap per room
+- [x] Export hasil ke PDF/Excel — memerlukan dependency baru (e.g. `pdf` package)
+- [x] Grafik chart interaktif — memerlukan `fl_chart` atau sejenisnya
+
+
 
 ### 💬 Feedback dari Asesor
 - [x] FeedbackScreen — asesor kirim feedback, peserta/asesor lihat riwayat feedback
@@ -163,6 +168,8 @@ Tabel `pertanyaan` juga belum punya kolom `created_at` dan `deleted_at`.
 - [x] Backend `POST /api/users/:id/change-password` — verifikasi old_password bcrypt, hash baru
 - [x] RoleChip — badge visual asesor/peserta di profil
 - [x] ProfileNotifier — ChangeNotifier untuk state profil + password
+- [x] Role management di database — role saat ini hanya disimpan lokal (SharedPreferences), belum kolom di DB
+- [x] Upload foto profil
 
 ### 🌐 Backend API
 - [x] CORS middleware
@@ -186,40 +193,26 @@ Tabel `pertanyaan` juga belum punya kolom `created_at` dan `deleted_at`.
 - [x] Health check pada semua container
 - [x] `.dockerignore` untuk optimasi build context
 
+### 🔔 Notifikasi & Real-time
+- [x] Notifikasi push — tombol notifikasi di dashboard belum berfungsi
+- [x] Real-time peserta masuk room — WebSocket ada tapi UI tidak update
+- [x] Real-time status ujian
 ---
 
 ## ❌ Fitur yang Belum Diimplementasikan
 
-### 📝 Bank Soal
-- [ ] Tipe soal Coding/File Upload
-
-### 📊 Penilaian & Hasil Ujian
-- [ ] Export hasil ke PDF/Excel — memerlukan dependency baru (e.g. `pdf` package)
-- [ ] Grafik chart interaktif — memerlukan `fl_chart` atau sejenisnya
-
-### 👥 Manajemen Pengguna
-- [ ] Role management di database — role saat ini hanya disimpan lokal (SharedPreferences), belum kolom di DB
-- [ ] Daftar semua user (admin) — belum ada halaman admin
-- [ ] Upload foto profil
-
-### 🔔 Notifikasi & Real-time
-- [ ] Notifikasi push — tombol notifikasi di dashboard belum berfungsi
-- [ ] Real-time peserta masuk room — WebSocket ada tapi UI tidak update
-- [ ] Real-time status ujian
-
 ### 🎨 UI/UX
-- [ ] Halaman Results — tab Results di bottom nav belum dedicated
-- [ ] Halaman Exams — tab Exams di bottom nav belum dedicated
+- [x] Halaman Results — tab Results di bottom nav belum dedicated
+- [x] Halaman Exams — tab Exams di bottom nav belum dedicated
 - [ ] Splash screen & onboarding
 - [ ] Lokalisasi Bahasa Indonesia penuh
 
 ### 🔧 Backend & Teknis
 - [ ] Input validation lebih ketat di semua handler
-- [ ] Unit test backend & frontend
 - [ ] Migrasi kolom database yang belum sinkron (room: description, start_date, question_types, shuffle_questions, room_code; pertanyaan: created_at, deleted_at)
 
 ### 🐛 Bug yang Diketahui
-- [ ] IP address hardcoded — `192.168.1.19` di `api_client.dart`
+- [x] IP address hardcoded — `192.168.1.19` di `api_client.dart`
 - [ ] Participants di ExamRoomScreen masih dummy (`_participantsCount = 12`)
 
 ---

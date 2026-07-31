@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:skora/core/services/auth_storage_service.dart';
 import 'package:skora/features/auth/data/models/auth/user.dart';
@@ -98,11 +99,46 @@ class ProfileNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set role locally (persisted to cache). Role is not in DB yet.
-  Future<void> setRole(String role) async {
-    if (_user == null) return;
-    _user = _user!.copyWith(role: role);
-    await AuthStorageService.updateCachedUser(_user!);
+  /// Set role — persists to server AND cache.
+  Future<bool> setRole(String role) async {
+    if (_user == null) return false;
+    _status = ProfileStatus.saving;
     notifyListeners();
+    try {
+      final updated = await _ds.updateRole(userId: _user!.idUsers, role: role);
+      _user = updated;
+      await AuthStorageService.updateCachedUser(_user!);
+      _status = ProfileStatus.idle;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      // Fallback: update locally so UI isn't stuck
+      _user = _user!.copyWith(role: role);
+      await AuthStorageService.updateCachedUser(_user!);
+      _status = ProfileStatus.idle;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  bool _uploadingAvatar = false;
+  bool get uploadingAvatar => _uploadingAvatar;
+
+  Future<bool> uploadAvatar(File file) async {
+    if (_user == null) return false;
+    _uploadingAvatar = true;
+    notifyListeners();
+    try {
+      final updated = await _ds.uploadAvatar(userId: _user!.idUsers, file: file);
+      _user = updated;
+      await AuthStorageService.updateCachedUser(_user!);
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _uploadingAvatar = false;
+      notifyListeners();
+    }
   }
 }

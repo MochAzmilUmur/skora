@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:skora/core/network/api_client.dart';
+import 'package:skora/core/services/grade_export_service.dart';
 import 'package:skora/features/auth/data/models/models.dart';
-import 'package:skora/features/room/data/models/room_model.dart';
+import 'package:skora/features/ujian/presentation/widgets/exam_score_chart.dart';
 import 'feedback_screen.dart';
 
 class RekamNilaiScreen extends StatefulWidget {
@@ -84,6 +85,15 @@ class _RekamNilaiScreenState extends State<RekamNilaiScreen> {
           ],
         ),
         actions: [
+          if (_hasils.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.download_outlined, color: Colors.white),
+              tooltip: 'Export CSV',
+              onPressed: () => GradeExportService.exportCsv(
+                roomName: widget.room.roomName,
+                hasils: _hasils,
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _load,
@@ -197,6 +207,10 @@ class _RekamNilaiScreenState extends State<RekamNilaiScreen> {
                   icon: Icons.cancel_outlined,
                   color: Colors.red),
             ],
+          ),
+          const SizedBox(height: 10),
+          ExamScoreDistributionChart(
+            scores: _hasils.map((h) => h.skor).toList(),
           ),
           const SizedBox(height: 10),
           Container(

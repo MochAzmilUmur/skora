@@ -3,9 +3,8 @@ class User {
   final String nama;
   final String email;
   final String? createdAt;
-  // ponytail: role is inferred from room ownership - asesor = created rooms, pelajar = joined rooms
-  // We store it locally from server response to avoid an extra API call
   final String role; // 'asesor' | 'pelajar'
+  final String? avatarUrl;
 
   User({
     required this.idUsers,
@@ -13,6 +12,7 @@ class User {
     required this.email,
     this.createdAt,
     this.role = 'pelajar',
+    this.avatarUrl,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -22,6 +22,7 @@ class User {
       email: json['email'] ?? '',
       createdAt: json['created_at'],
       role: json['role'] ?? 'pelajar',
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 
@@ -32,6 +33,7 @@ class User {
       'email': email,
       'created_at': createdAt,
       'role': role,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
 
@@ -41,6 +43,7 @@ class User {
     String? email,
     String? createdAt,
     String? role,
+    String? avatarUrl,
   }) {
     return User(
       idUsers: idUsers ?? this.idUsers,
@@ -48,6 +51,7 @@ class User {
       email: email ?? this.email,
       createdAt: createdAt ?? this.createdAt,
       role: role ?? this.role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 

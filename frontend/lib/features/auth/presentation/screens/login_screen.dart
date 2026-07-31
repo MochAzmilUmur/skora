@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onLogin: AuthService(context).onLogin,
       onSignup: AuthService(context).onSignup,
       onForgotPassword: AuthService(context).onForgotPassword,
-      logo: Image.asset('assets/kroniva.webp'),
+      logo: Image.asset('assets/skora_no_bg.webp'),
       signUpMode: SignUpModes.both,
       socialLogins: _socialLogins(context),
       loginDesktopTheme: _desktopTheme,

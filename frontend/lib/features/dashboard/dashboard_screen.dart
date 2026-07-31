@@ -12,6 +12,8 @@ import '../../core/widgets/notification_overlay.dart';
 import '../auth/data/models/auth/user.dart';
 import '../notifications/presentation/screens/notifications_screen.dart';
 import '../profile/presentation/screens/profile_screen.dart';
+import '../ujian/presentation/screens/exams_screen.dart';
+import '../ujian/presentation/screens/results_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -209,8 +211,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             index: _selectedIndex,
             children: [
               _buildHomeTab(),
-              _buildHomeTab(), // Exams tab — reuse home for now
-              _buildHomeTab(), // Results tab — reuse home for now
+              const ExamsScreen(),
+              const ResultsScreen(),
               ProfileScreen(onLogout: () async {
                 await AuthStorageService.clearUser();
                 if (mounted) {

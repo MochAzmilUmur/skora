@@ -47,10 +47,14 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_local_notifications: ^18.0.0
   web_socket_channel: ^3.0.0
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -67,6 +71,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - .env
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -103,3 +108,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/skora.png"
+  min_sdk_android: 21
+
+  # (Opsional) Adaptive Icon untuk HP Android modern
+  # Agar icon terlihat rapi dengan bentuk lingkaran/kotak bawaan tema HP
+  adaptive_icon_background: "#0F172A" # Bisa warna hex atau path gambar background
+  adaptive_icon_foreground: "assets/skora.png"

@@ -7,7 +7,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	
+
+	"backend/internal/models"
 )
 
 func InitDB() *gorm.DB {
@@ -25,7 +26,26 @@ func InitDB() *gorm.DB {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	
+	// AutoMigrate syncs model definitions with database schema.
+	// Only adds new columns/indexes — never drops existing ones.
+	if err := db.AutoMigrate(
+		&models.User{},
+		&models.Room{},
+		&models.RoomParticipant{},
+		&models.Pertanyaan{},
+		&models.QuestionOption{},
+		&models.SesiUjian{},
+		&models.Answer{},
+		&models.HasilUjian{},
+		&models.Feedback{},
+		&models.ActivityLog{},
+		&models.PasswordReset{},
+	); err != nil {
+		log.Printf("WARNING: AutoMigrate failed: %v", err)
+	} else {
+		log.Println("Database migration completed successfully")
+	}
+
 	return db
 }
 

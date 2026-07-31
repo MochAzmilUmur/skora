@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../features/auth/data/models/models.dart';
@@ -47,6 +48,7 @@ class UjianRemoteDataSourceImpl implements UjianRemoteDataSource {
   Future<PertanyaanModel> createPertanyaan({
     required String roomId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   }) async {
@@ -54,6 +56,7 @@ class UjianRemoteDataSourceImpl implements UjianRemoteDataSource {
       final body = <String, dynamic>{
         'room_id': roomId,
         'pertanyaan_text': pertanyaanText,
+        if (gambarUrl != null && gambarUrl.isNotEmpty) 'gambar_url': gambarUrl,
         'type_pertanyaan': typePertanyaan.toJson(),
         if (options != null)
           'question_options': options
@@ -78,13 +81,16 @@ class UjianRemoteDataSourceImpl implements UjianRemoteDataSource {
   Future<PertanyaanModel> updatePertanyaan({
     required int pertanyaanId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
   }) async {
     try {
-      final response = await ApiClient.put('/pertanyaans/$pertanyaanId', {
+      final body = <String, dynamic>{
         'pertanyaan_text': pertanyaanText,
+        'gambar_url': gambarUrl ?? '',
         'type_pertanyaan': typePertanyaan.toJson(),
-      });
+      };
+      final response = await ApiClient.put('/pertanyaans/$pertanyaanId', body);
       if (response.statusCode == 200) {
         return PertanyaanModel.fromJson(jsonDecode(response.body));
       }
@@ -104,6 +110,40 @@ class UjianRemoteDataSourceImpl implements UjianRemoteDataSource {
       }
     } catch (e) {
       AppLogger.error('deletePertanyaan', tag: 'UjianDS', error: e);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<String> uploadImage(File file) async {
+    try {
+      final response = await ApiClient.uploadMultipart('/upload', file);
+      if (response.statusCode == 201) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return body['file_url'] as String;
+      }
+      throw Exception('Failed to upload image: ${response.statusCode}');
+    } catch (e) {
+      AppLogger.error('uploadImage', tag: 'UjianDS', error: e);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<int> importQuestionsExcel(String roomId, File excelFile) async {
+    try {
+      final response = await ApiClient.uploadMultipart(
+        '/rooms/$roomId/import-excel',
+        excelFile,
+      );
+      if (response.statusCode == 201) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return (body['total_imported'] as num).toInt();
+      }
+      final errorMsg = jsonDecode(response.body)['error'] ?? 'Import failed';
+      throw Exception(errorMsg);
+    } catch (e) {
+      AppLogger.error('importQuestionsExcel', tag: 'UjianDS', error: e);
       rethrow;
     }
   }

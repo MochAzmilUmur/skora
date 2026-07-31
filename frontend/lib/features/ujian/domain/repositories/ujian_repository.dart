@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../features/auth/data/models/models.dart';
@@ -15,6 +16,7 @@ abstract class UjianRepository {
   Future<Either<Failure, PertanyaanModel>> createPertanyaan({
     required String roomId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   });
@@ -22,10 +24,15 @@ abstract class UjianRepository {
   Future<Either<Failure, PertanyaanModel>> updatePertanyaan({
     required int pertanyaanId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
   });
 
   Future<Either<Failure, void>> deletePertanyaan(int pertanyaanId);
+
+  Future<Either<Failure, String>> uploadImage(File file);
+
+  Future<Either<Failure, int>> importQuestionsExcel(String roomId, File excelFile);
   
   // Sesi Ujian
   Future<Either<Failure, SesiUjianModel>> startSesiUjian({

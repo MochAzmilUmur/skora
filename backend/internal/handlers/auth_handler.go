@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"backend/internal/models"
+	"backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,39 +16,32 @@ import (
 	"gorm.io/gorm"
 )
 
+// AuthHandler handles authentication endpoints.
 type AuthHandler struct {
 	DB *gorm.DB
 }
 
+// NewAuthHandler creates a new AuthHandler.
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
 	return &AuthHandler{DB: db}
 }
 
-type RegisterRequest struct {
-	Nama     string `json:"nama" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-}
-
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
+// AuthResponse is the response payload for login/register.
 type AuthResponse struct {
-	Token     string     `json:"token"`
-	ExpiresAt time.Time  `json:"expires_at"`
+	Token     string      `json:"token"`
+	ExpiresAt time.Time   `json:"expires_at"`
 	User      models.User `json:"user"`
 }
 
+// Register handles POST /api/auth/register.
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req RegisterRequest
+	var req validator.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
 
-	// Cek email sudah terdaftar
+	// Check email uniqueness
 	var existing models.User
 	if err := h.DB.Where("email = ?", req.Email).First(&existing).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
@@ -79,10 +73,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, AuthResponse{Token: token, ExpiresAt: expiresAt, User: user})
 }
 
+// Login handles POST /api/auth/login.
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+	var req validator.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
 
@@ -106,18 +101,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, AuthResponse{Token: token, ExpiresAt: expiresAt, User: user})
 }
 
+// ForgotPassword handles POST /api/auth/forgot-password.
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
-	var req struct {
-		Email string `json:"email" binding:"required,email"`
-	}
+	var req validator.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
 
 	var user models.User
 	if err := h.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		// Jangan bocorkan apakah email terdaftar atau tidak
+		// Don't leak whether email is registered
 		c.JSON(http.StatusOK, gin.H{"message": "If the email is registered, a reset link has been sent"})
 		return
 	}
@@ -128,28 +122,26 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		Token:     generateResetToken(),
 		ExpiredAt: time.Now().Add(1 * time.Hour),
 	}
-	// Hapus token lama jika ada
+	// Delete old unused tokens
 	h.DB.Where("id_users = ? AND used_at IS NULL", user.IDUsers).Delete(&models.PasswordReset{})
 	if err := h.DB.Create(&resetToken).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create reset token"})
 		return
 	}
 
-	// TODO: kirim email dengan resetToken.Token
-	// Untuk development, kembalikan token langsung
+	// TODO: send email with resetToken.Token
+	// For development, return token directly
 	c.JSON(http.StatusOK, gin.H{
-		"message": "If the email is registered, a reset link has been sent",
-		"debug_token": resetToken.Token, // hapus di production
+		"message":     "If the email is registered, a reset link has been sent",
+		"debug_token": resetToken.Token, // remove in production
 	})
 }
 
+// ResetPassword handles POST /api/auth/reset-password.
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
-	var req struct {
-		Token    string `json:"token" binding:"required"`
-		Password string `json:"password" binding:"required,min=6"`
-	}
+	var req validator.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
 

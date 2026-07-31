@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../../../features/auth/data/models/models.dart';
 
 abstract class UjianRemoteDataSource {
@@ -13,6 +14,7 @@ abstract class UjianRemoteDataSource {
   Future<PertanyaanModel> createPertanyaan({
     required String roomId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   });
@@ -20,11 +22,16 @@ abstract class UjianRemoteDataSource {
   Future<PertanyaanModel> updatePertanyaan({
     required int pertanyaanId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
   });
 
   Future<void> deletePertanyaan(int pertanyaanId);
   
+  Future<String> uploadImage(File file);
+
+  Future<int> importQuestionsExcel(String roomId, File excelFile);
+
   // Sesi Ujian
   Future<SesiUjianModel> startSesiUjian({
     required String roomId,

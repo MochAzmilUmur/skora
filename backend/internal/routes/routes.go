@@ -26,6 +26,9 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Serve uploaded static files
+	r.Static("/uploads", "./storage/uploads")
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db)
@@ -35,6 +38,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	answerHandler := handlers.NewAnswerHandler(db)
 	hasilUjianHandler := handlers.NewHasilUjianHandler(db)
 	feedbackHandler := handlers.NewFeedbackHandler(db, hub)
+	uploadHandler := handlers.NewUploadHandler()
 
 	// WebSocket endpoint: ws://host/ws?token=<jwt>
 	r.GET("/ws", ws.Handler(hub))
@@ -53,6 +57,9 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		// Protected routes
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuth())
+
+		// File Upload route
+		protected.POST("/upload", uploadHandler.UploadFile)
 
 		// User routes
 		users := protected.Group("/users")
@@ -80,6 +87,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			rooms.POST("/:id/participants", roomHandler.AddParticipant)
 			rooms.DELETE("/:id/participants/:participant_id", roomHandler.RemoveParticipant)
 			rooms.GET("/:id/pertanyaans", pertanyaanHandler.GetPertanyaansByRoom)
+			rooms.POST("/:id/import-excel", pertanyaanHandler.ImportExcel)
 		}
 
 		// Pertanyaan routes

@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../features/auth/data/models/models.dart';
 import '../../../../features/ujian/data/datasources/ujian_remote_datasource_impl.dart';
 import '../../../../features/ujian/data/repositories/ujian_repository_impl.dart';
@@ -36,6 +39,7 @@ class _SoalManagementBody extends StatefulWidget {
 
 class _SoalManagementBodyState extends State<_SoalManagementBody> {
   final _scrollCtrl = ScrollController();
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -66,7 +70,43 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
       ),
     );
     if (result == true && mounted) {
-      // Notifier already updated list in-place; no extra fetch needed.
+      // Notifier already updated list in-place
+    }
+  }
+
+  Future<void> _importExcel() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result == null || result.files.single.path == null) return;
+
+    final file = File(result.files.single.path!);
+    setState(() => _isImporting = true);
+
+    final notifier = context.read<SoalNotifier>();
+    final count = await notifier.importExcel(widget.room.idRoom, file);
+
+    if (!mounted) return;
+    setState(() => _isImporting = false);
+
+    if (count != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Berhasil mengimpor $count soal dari Excel'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(notifier.errorMessage.isNotEmpty
+              ? notifier.errorMessage
+              : 'Gagal mengimpor file Excel'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -122,6 +162,11 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.file_upload),
+            tooltip: 'Import Excel (.xlsx)',
+            onPressed: _isImporting ? null : _importExcel,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => notifier.loadSoal(widget.room.idRoom),
           ),
@@ -133,7 +178,25 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
         icon: const Icon(Icons.add),
         label: const Text('Tambah Soal'),
       ),
-      body: _buildBody(notifier),
+      body: Stack(
+        children: [
+          _buildBody(notifier),
+          if (_isImporting)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.blue),
+                    SizedBox(height: 16),
+                    Text('Mengimpor soal dari Excel...', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -170,7 +233,7 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
             const Text('Belum ada soal', style: TextStyle(color: Colors.white70, fontSize: 16)),
             const SizedBox(height: 8),
             const Text(
-              'Tap tombol + untuk menambah soal',
+              'Tap + untuk buat soal atau tombol upload untuk import Excel',
               style: TextStyle(color: Colors.white38, fontSize: 13),
             ),
           ],
@@ -220,6 +283,7 @@ class _SoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMultiple = soal.typePertanyaan == TypePertanyaan.multipleChoice;
+    final hasImage = soal.gambarUrl != null && soal.gambarUrl!.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -265,6 +329,24 @@ class _SoalCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (hasImage) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image, size: 12, color: Colors.amberAccent),
+                        SizedBox(width: 4),
+                        Text('Gambar', style: TextStyle(color: Colors.amberAccent, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.white54, size: 20),
@@ -295,6 +377,21 @@ class _SoalCard extends StatelessWidget {
               ],
             ),
           ),
+          // Question image thumbnail if present
+          if (hasImage)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  ApiClient.resolveImageUrl(soal.gambarUrl),
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
           // Question text
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

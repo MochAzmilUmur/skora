@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../features/auth/data/models/models.dart';
 import '../providers/soal_notifier.dart';
 
@@ -23,6 +26,11 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
   // Options for multiple choice
   final List<_OptionEntry> _options = [];
 
+  // Image upload state
+  File? _pickedImageFile;
+  String? _gambarUrl;
+  bool _isUploadingImage = false;
+
   bool get _isEdit => widget.soal != null;
 
   @override
@@ -31,6 +39,7 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
     if (_isEdit) {
       final s = widget.soal!;
       _textCtrl.text = s.pertanyaanText;
+      _gambarUrl = s.gambarUrl;
       _type = s.typePertanyaan;
       _options.addAll(s.questionOptions.map((o) => _OptionEntry(
             textCtrl: TextEditingController(text: o.optionText),
@@ -52,10 +61,42 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null) {
+      setState(() {
+        _pickedImageFile = File(picked.path);
+      });
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _pickedImageFile = null;
+      _gambarUrl = null;
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final notifier = context.read<SoalNotifier>();
+
+    // Upload image first if a new image was picked
+    String? finalGambarUrl = _gambarUrl;
+    if (_pickedImageFile != null) {
+      setState(() => _isUploadingImage = true);
+      final uploadedUrl = await notifier.uploadImage(_pickedImageFile!);
+      setState(() => _isUploadingImage = false);
+      if (uploadedUrl == null) {
+        _showSnack(notifier.errorMessage.isNotEmpty
+            ? notifier.errorMessage
+            : 'Gagal mengunggah gambar');
+        return;
+      }
+      finalGambarUrl = uploadedUrl;
+    }
 
     List<QuestionOptionModel>? options;
     if (_type == TypePertanyaan.multipleChoice) {
@@ -79,12 +120,14 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
       ok = await notifier.updateSoal(
         pertanyaanId: widget.soal!.id,
         pertanyaanText: _textCtrl.text.trim(),
+        gambarUrl: finalGambarUrl,
         typePertanyaan: _type,
       );
     } else {
       ok = await notifier.createSoal(
         roomId: widget.roomId,
         pertanyaanText: _textCtrl.text.trim(),
+        gambarUrl: finalGambarUrl,
         typePertanyaan: _type,
         options: options,
       );
@@ -119,7 +162,7 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isSaving = context.watch<SoalNotifier>().isSaving;
+    final isSaving = context.watch<SoalNotifier>().isSaving || _isUploadingImage;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A1628),
@@ -137,6 +180,7 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
             const SizedBox(height: 8),
             _typeSelector(),
             const SizedBox(height: 20),
+
             _label('Pertanyaan'),
             const SizedBox(height: 8),
             TextFormField(
@@ -147,8 +191,15 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Pertanyaan tidak boleh kosong' : null,
             ),
+            const SizedBox(height: 20),
+
+            // ── Gambar Soal Section ─────────────────────────────────────────
+            _label('Gambar Soal (Opsional)'),
+            const SizedBox(height: 8),
+            _imagePickerWidget(),
+            const SizedBox(height: 20),
+
             if (_type == TypePertanyaan.multipleChoice) ...[
-              const SizedBox(height: 24),
               Row(
                 children: [
                   _label('Pilihan Jawaban'),
@@ -182,6 +233,73 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _imagePickerWidget() {
+    final hasImage = _pickedImageFile != null || (_gambarUrl != null && _gambarUrl!.isNotEmpty);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2942),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade700),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasImage) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _pickedImageFile != null
+                  ? Image.file(
+                      _pickedImageFile!,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      ApiClient.resolveImageUrl(_gambarUrl),
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 120,
+                        color: Colors.black26,
+                        child: const Center(
+                          child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.image, color: Colors.blue, size: 18),
+                label: Text(
+                  hasImage ? 'Ganti Gambar' : 'Pilih Gambar',
+                  style: const TextStyle(color: Colors.blue),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.blue),
+                ),
+              ),
+              if (hasImage) ...[
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: _removeImage,
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                  label: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

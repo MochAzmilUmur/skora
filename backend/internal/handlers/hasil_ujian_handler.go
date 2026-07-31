@@ -5,39 +5,48 @@ import (
 	"strconv"
 
 	"backend/internal/models"
+	"backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
+// HasilUjianHandler handles exam result endpoints.
 type HasilUjianHandler struct {
 	DB *gorm.DB
 }
 
+// NewHasilUjianHandler creates a new HasilUjianHandler.
 func NewHasilUjianHandler(db *gorm.DB) *HasilUjianHandler {
 	return &HasilUjianHandler{DB: db}
 }
 
 // CreateHasilUjian auto-calculates score from answers in the session.
 func (h *HasilUjianHandler) CreateHasilUjian(c *gin.Context) {
-	var input struct {
-		SessionID int `json:"session_id" binding:"required"`
+	var req validator.CreateHasilUjianRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
+		return
 	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+	// Verify session exists
+	var sesi models.SesiUjian
+	if err := h.DB.First(&sesi, req.SessionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
 		return
 	}
 
 	// Prevent duplicate hasil
 	var existing models.HasilUjian
-	if err := h.DB.Where("session_id = ?", input.SessionID).First(&existing).Error; err == nil {
+	if err := h.DB.Where("session_id = ?", req.SessionID).First(&existing).Error; err == nil {
 		c.JSON(http.StatusOK, existing)
 		return
 	}
 
 	// Load all answers for this session with question options
 	var answers []models.Answer
-	if err := h.DB.Preload("Pertanyaan.QuestionOptions").Where("session_id = ?", input.SessionID).Find(&answers).Error; err != nil {
+	if err := h.DB.Preload("Pertanyaan.QuestionOptions").Where("session_id = ?", req.SessionID).Find(&answers).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -62,7 +71,7 @@ func (h *HasilUjianHandler) CreateHasilUjian(c *gin.Context) {
 	}
 
 	hasil := models.HasilUjian{
-		SessionID:      input.SessionID,
+		SessionID:      req.SessionID,
 		TotalQuestions: total,
 		JawabanBenar:   benar,
 		JawabanSalah:   salah,
@@ -77,15 +86,18 @@ func (h *HasilUjianHandler) CreateHasilUjian(c *gin.Context) {
 	c.JSON(http.StatusCreated, hasil)
 }
 
+// GetHasilUjians handles GET /api/hasil-ujians.
 func (h *HasilUjianHandler) GetHasilUjians(c *gin.Context) {
 	sessionID := c.Query("session_id")
 
 	query := h.DB.Preload("SesiUjian")
 	if sessionID != "" {
 		sid, err := strconv.Atoi(sessionID)
-		if err == nil {
-			query = query.Where("session_id = ?", sid)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session_id: must be a number"})
+			return
 		}
+		query = query.Where("session_id = ?", sid)
 	}
 
 	var hasils []models.HasilUjian
@@ -107,10 +119,11 @@ func (h *HasilUjianHandler) GetHasilUjians(c *gin.Context) {
 	c.JSON(http.StatusOK, hasils)
 }
 
+// GetHasilUjian handles GET /api/hasil-ujians/:id.
 func (h *HasilUjianHandler) GetHasilUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
 		return
 	}
 
@@ -123,10 +136,11 @@ func (h *HasilUjianHandler) GetHasilUjian(c *gin.Context) {
 	c.JSON(http.StatusOK, hasil)
 }
 
+// UpdateHasilUjian handles PUT /api/hasil-ujians/:id.
 func (h *HasilUjianHandler) UpdateHasilUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
 		return
 	}
 
@@ -137,7 +151,7 @@ func (h *HasilUjianHandler) UpdateHasilUjian(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&hasil); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
 
@@ -149,10 +163,18 @@ func (h *HasilUjianHandler) UpdateHasilUjian(c *gin.Context) {
 	c.JSON(http.StatusOK, hasil)
 }
 
+// DeleteHasilUjian handles DELETE /api/hasil-ujians/:id.
 func (h *HasilUjianHandler) DeleteHasilUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
+		return
+	}
+
+	// Verify exists
+	var hasil models.HasilUjian
+	if err := h.DB.First(&hasil, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Hasil ujian not found"})
 		return
 	}
 
@@ -164,11 +186,24 @@ func (h *HasilUjianHandler) DeleteHasilUjian(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Hasil ujian deleted successfully"})
 }
 
-// GetHasilByRoom returns all hasil ujian for a room (rekap nilai peserta).
+// GetHasilByRoom returns all exam results for a room (rekap nilai peserta).
 func (h *HasilUjianHandler) GetHasilByRoom(c *gin.Context) {
-	roomID := c.Param("id")
-	if roomID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "room id required"})
+	roomIDStr := c.Param("id")
+	if roomIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Room ID is required"})
+		return
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(roomIDStr); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid room ID: must be a valid UUID"})
+		return
+	}
+
+	// Verify room exists
+	var room models.Room
+	if err := h.DB.First(&room, "id_room = ?", roomIDStr).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
 
@@ -178,7 +213,7 @@ func (h *HasilUjianHandler) GetHasilByRoom(c *gin.Context) {
 		Preload("SesiUjian.User").
 		Preload("SesiUjian.Room").
 		Joins("JOIN sesi_ujian ON sesi_ujian.id = hasil_ujian.session_id").
-		Where("sesi_ujian.room_id = ?", roomID).
+		Where("sesi_ujian.room_id = ?", roomIDStr).
 		Find(&hasils).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

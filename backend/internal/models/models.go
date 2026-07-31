@@ -55,6 +55,7 @@ type Pertanyaan struct {
 	ID              int              `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	RoomID          uuid.UUID        `json:"room_id" gorm:"type:uuid;column:room_id"`
 	PertanyaanText  string           `json:"pertanyaan_text" gorm:"type:text;column:pertanyaan_text"`
+	GambarURL       string           `json:"gambar_url,omitempty" gorm:"column:gambar_url"`
 	TypePertanyaan  string           `json:"type_pertanyaan" gorm:"type:enum('multiple_choice','text');column:type_pertanyaan"`
 	CreatedAt       time.Time        `json:"created_at" gorm:"column:created_at"`
 	DeletedAt       gorm.DeletedAt   `json:"deleted_at,omitempty" gorm:"index;column:deleted_at"`

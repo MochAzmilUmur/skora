@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../../../features/auth/data/models/models.dart';
 import '../../domain/repositories/ujian_repository.dart';
@@ -77,9 +78,30 @@ class SoalNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> uploadImage(File file) async {
+    _status = SoalStatus.saving;
+    notifyListeners();
+
+    final result = await _repo.uploadImage(file);
+    return result.fold(
+      (f) {
+        _errorMessage = f.message;
+        _status = SoalStatus.idle;
+        notifyListeners();
+        return null;
+      },
+      (url) {
+        _status = SoalStatus.idle;
+        notifyListeners();
+        return url;
+      },
+    );
+  }
+
   Future<bool> createSoal({
     required String roomId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
     List<QuestionOptionModel>? options,
   }) async {
@@ -89,6 +111,7 @@ class SoalNotifier extends ChangeNotifier {
     final result = await _repo.createPertanyaan(
       roomId: roomId,
       pertanyaanText: pertanyaanText,
+      gambarUrl: gambarUrl,
       typePertanyaan: typePertanyaan,
       options: options,
     );
@@ -111,6 +134,7 @@ class SoalNotifier extends ChangeNotifier {
   Future<bool> updateSoal({
     required int pertanyaanId,
     required String pertanyaanText,
+    String? gambarUrl,
     required TypePertanyaan typePertanyaan,
   }) async {
     _status = SoalStatus.saving;
@@ -119,6 +143,7 @@ class SoalNotifier extends ChangeNotifier {
     final result = await _repo.updatePertanyaan(
       pertanyaanId: pertanyaanId,
       pertanyaanText: pertanyaanText,
+      gambarUrl: gambarUrl,
       typePertanyaan: typePertanyaan,
     );
     return result.fold(
@@ -136,6 +161,25 @@ class SoalNotifier extends ChangeNotifier {
         _status = SoalStatus.idle;
         notifyListeners();
         return true;
+      },
+    );
+  }
+
+  Future<int?> importExcel(String roomId, File excelFile) async {
+    _status = SoalStatus.saving;
+    notifyListeners();
+
+    final result = await _repo.importQuestionsExcel(roomId, excelFile);
+    return result.fold(
+      (f) {
+        _errorMessage = f.message;
+        _status = SoalStatus.idle;
+        notifyListeners();
+        return null;
+      },
+      (importedCount) async {
+        await loadSoal(roomId);
+        return importedCount;
       },
     );
   }

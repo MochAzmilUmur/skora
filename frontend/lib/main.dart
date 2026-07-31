@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'core/services/auth_storage_service.dart';
@@ -6,7 +7,8 @@ import 'core/services/websocket_service.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 
-void main() {
+void main() async {
+  await dotenv.load(fileName: '.env');
   runApp(
     ChangeNotifierProvider(
       create: (_) => WebSocketService(),

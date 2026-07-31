@@ -1,7 +1,9 @@
 services:
+  # ─── Database ──────────────────────────────────────────
   postgres:
-    build: .
+    image: postgres:15-alpine
     container_name: postgres_db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: mydb
       POSTGRES_USER: postgres
@@ -11,8 +13,40 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - postgres_network
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ─── Go Backend (Multi-Stage Build) ───────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: go_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: mydb
+      PORT: 8080
+      JWT_SECRET: ganti_dengan_secret_yang_kuat
+      WS_ALLOWED_ORIGIN: http://localhost:3000
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  # ─── pgAdmin ──────────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin4
@@ -28,7 +62,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - postgres_network
+      - app_network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/misc/ping"]
       interval: 30s
@@ -38,6 +72,8 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  backend_storage:
+
 networks:
-  postgres_network:
+  app_network:
     driver: bridge

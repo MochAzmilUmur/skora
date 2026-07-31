@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/widgets/protected_screen.dart';
 import '../../../../features/auth/data/models/models.dart';
@@ -140,7 +141,7 @@ class _ExamSessionViewState extends State<_ExamSessionView> {
         },
         child: Scaffold(
           backgroundColor: const Color(0xFF0F172A),
-          appBar: _buildAppBar(context, notifier, roomName),
+          appBar: _buildAppBar(context, notifier, widget.roomName),
           body: switch (notifier.status) {
             ExamStatus.loading => const Center(
                 child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
@@ -392,6 +393,18 @@ class _QuestionCard extends StatelessWidget {
             style: const TextStyle(
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
+          if (soal.gambarUrl != null && soal.gambarUrl!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                ApiClient.resolveImageUrl(soal.gambarUrl),
+                width: double.infinity,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           if (soal.typePertanyaan == TypePertanyaan.multipleChoice)
             _MultipleChoiceOptions(soal: soal, notifier: notifier)

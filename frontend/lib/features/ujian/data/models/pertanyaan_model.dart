@@ -22,6 +22,7 @@ class PertanyaanModel {
   final int id;
   final String roomId;
   final String pertanyaanText;
+  final String? gambarUrl;
   final TypePertanyaan typePertanyaan;
   final RoomModel? room;
   final List<QuestionOptionModel> questionOptions;
@@ -30,6 +31,7 @@ class PertanyaanModel {
     required this.id,
     required this.roomId,
     required this.pertanyaanText,
+    this.gambarUrl,
     required this.typePertanyaan,
     this.room,
     this.questionOptions = const [],
@@ -40,6 +42,7 @@ class PertanyaanModel {
       id: json['id'] as int,
       roomId: json['room_id'] as String,
       pertanyaanText: json['pertanyaan_text'] as String,
+      gambarUrl: json['gambar_url'] as String?,
       typePertanyaan: TypePertanyaan.fromString(json['type_pertanyaan'] as String),
       room: json['room'] != null
           ? RoomModel.fromJson(json['room'] as Map<String, dynamic>)
@@ -57,6 +60,7 @@ class PertanyaanModel {
       'id': id,
       'room_id': roomId,
       'pertanyaan_text': pertanyaanText,
+      if (gambarUrl != null && gambarUrl!.isNotEmpty) 'gambar_url': gambarUrl,
       'type_pertanyaan': typePertanyaan.toJson(),
       if (room != null) 'room': room!.toJson(),
       'question_options': questionOptions.map((e) => e.toJson()).toList(),
@@ -67,6 +71,7 @@ class PertanyaanModel {
     int? id,
     String? roomId,
     String? pertanyaanText,
+    String? gambarUrl,
     TypePertanyaan? typePertanyaan,
     RoomModel? room,
     List<QuestionOptionModel>? questionOptions,
@@ -75,6 +80,7 @@ class PertanyaanModel {
       id: id ?? this.id,
       roomId: roomId ?? this.roomId,
       pertanyaanText: pertanyaanText ?? this.pertanyaanText,
+      gambarUrl: gambarUrl ?? this.gambarUrl,
       typePertanyaan: typePertanyaan ?? this.typePertanyaan,
       room: room ?? this.room,
       questionOptions: questionOptions ?? this.questionOptions,
@@ -92,6 +98,6 @@ class PertanyaanModel {
 
   @override
   String toString() {
-    return 'PertanyaanModel(id: $id, pertanyaanText: $pertanyaanText, type: $typePertanyaan)';
+    return 'PertanyaanModel(id: $id, pertanyaanText: $pertanyaanText, gambarUrl: $gambarUrl, type: $typePertanyaan)';
   }
 }

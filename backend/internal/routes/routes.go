@@ -31,7 +31,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
-	userHandler := handlers.NewUserHandler(db)
+	userHandler := handlers.NewUserHandler(db, hub)
 	roomHandler := handlers.NewRoomHandler(db, hub)
 	pertanyaanHandler := handlers.NewPertanyaanHandler(db)
 	sesiUjianHandler := handlers.NewSesiUjianHandler(db, hub)

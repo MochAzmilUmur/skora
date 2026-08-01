@@ -96,5 +96,5 @@ func (c *Client) WritePump() {
 
 // close menutup channel send, yang akan memicu WritePump untuk berhenti.
 func (c *Client) close() {
-	c.conn.Close()
+	close(c.send)
 }

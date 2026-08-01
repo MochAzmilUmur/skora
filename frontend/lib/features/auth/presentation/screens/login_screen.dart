@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onLogin: AuthService(context).onLogin,
       onSignup: AuthService(context).onSignup,
       onForgotPassword: AuthService(context).onForgotPassword,
-      logo: Image.asset('assets/skora_no_bg.webp'),
+      logo: Image.asset('assets/skoralogin_no_bg.webp'),
       signUpMode: SignUpModes.both,
       socialLogins: _socialLogins(context),
       loginDesktopTheme: _desktopTheme,
@@ -40,14 +40,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static List<LanguageOption> get _languageOptions => const <LanguageOption>[
         LanguageOption(
-          value: 'Turkish',
-          code: 'TR',
-          iconPath: 'assets/images/tr.png',
+          value: 'indonesia',
+          code: 'Ind',
+          iconPath: 'assets/indonesia.webp',
         ),
         LanguageOption(
           value: 'English',
           code: 'EN',
-          iconPath: 'assets/images/en.png',
+          iconPath: 'assets/english.webp',
         ),
       ];
 
@@ -81,12 +81,6 @@ class _LoginScreenState extends State<LoginScreen> {
   List<SocialLogin> _socialLogins(BuildContext context) => <SocialLogin>[
         SocialLogin(
             callback: () async => AuthService(context).socialLogin('Google'),
-            iconPath: 'assets/images/google.png'),
-        SocialLogin(
-            callback: () async => AuthService(context).socialLogin('Facebook'),
-            iconPath: 'assets/images/facebook.png'),
-        SocialLogin(
-            callback: () async => AuthService(context).socialLogin('Linkedin'),
-            iconPath: 'assets/images/linkedin.png'),
+            iconPath: 'assets/google_no_bg.webp'),
       ];
 }

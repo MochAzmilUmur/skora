@@ -39,32 +39,6 @@ class ProfileNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updateProfile({String? nama, String? email}) async {
-    if (_user == null) return false;
-    _status = ProfileStatus.saving;
-    _error = '';
-    notifyListeners();
-
-    try {
-      final updated = await _ds.updateProfile(
-        userId: _user!.idUsers,
-        nama: nama,
-        email: email,
-      );
-      _user = updated.copyWith(role: _user!.role);
-      await AuthStorageService.updateCachedUser(_user!);
-      _status = ProfileStatus.success;
-      _successMessage = 'Profil berhasil diperbarui';
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
-      _status = ProfileStatus.error;
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<bool> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -99,27 +73,7 @@ class ProfileNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set role — persists to server AND cache.
-  Future<bool> setRole(String role) async {
-    if (_user == null) return false;
-    _status = ProfileStatus.saving;
-    notifyListeners();
-    try {
-      final updated = await _ds.updateRole(userId: _user!.idUsers, role: role);
-      _user = updated;
-      await AuthStorageService.updateCachedUser(_user!);
-      _status = ProfileStatus.idle;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      // Fallback: update locally so UI isn't stuck
-      _user = _user!.copyWith(role: role);
-      await AuthStorageService.updateCachedUser(_user!);
-      _status = ProfileStatus.idle;
-      notifyListeners();
-      return false;
-    }
-  }
+  // ponytail: setRole dihapus — role hanya bisa diubah admin via web panel
 
   bool _uploadingAvatar = false;
   bool get uploadingAvatar => _uploadingAvatar;

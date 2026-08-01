@@ -3,6 +3,7 @@ enum WebSocketMessageType {
   participantJoined,
   examStarted,
   notification,
+  roleChanged,
   unknown;
 
   static WebSocketMessageType fromString(String type) {
@@ -15,6 +16,8 @@ enum WebSocketMessageType {
         return WebSocketMessageType.examStarted;
       case 'notification':
         return WebSocketMessageType.notification;
+      case 'role_changed':
+        return WebSocketMessageType.roleChanged;
       default:
         return WebSocketMessageType.unknown;
     }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -79,8 +80,11 @@ class WebSocketService extends ChangeNotifier {
 
     _setState(WsConnectionState.connecting);
 
-    final host = Platform.isAndroid ? '192.168.1.19' : 'localhost';
-    final uri = Uri.parse('ws://$host:8080/ws?token=$token');
+    final host = Platform.isAndroid
+        ? (dotenv.env['API_HOST_DEVICE'] ?? '192.168.1.19')
+        : (dotenv.env['API_HOST_EMULATOR'] ?? 'localhost');
+    final port = dotenv.env['API_PORT'] ?? '8080';
+    final uri = Uri.parse('ws://$host:$port/ws?token=$token');
 
     AppLogger.log('WS: connecting to $uri', tag: 'WS');
 
@@ -140,6 +144,19 @@ class WebSocketService extends ChangeNotifier {
       case WebSocketMessageType.notification:
         title = json['title'] as String? ?? 'Notifikasi';
         body = json['body'] as String? ?? '';
+      case WebSocketMessageType.roleChanged:
+        final newRole = json['new_role'] as String? ?? '';
+        final isAsesor = newRole == 'asesor';
+        title = isAsesor ? '🎓 Kamu Sekarang Asesor' : '📚 Role Diperbarui';
+        body = isAsesor
+            ? 'Selamat! Kamu telah dijadikan Asesor oleh Admin Sistem. Kamu kini dapat membuat dan mengelola room ujian.'
+            : 'Role kamu telah diubah menjadi Pelajar oleh Admin Sistem.';
+        // Update cached user role agar UI langsung reflect perubahan
+        AuthStorageService.getCurrentUser().then((user) {
+          if (user != null) {
+            AuthStorageService.updateCachedUser(user.copyWith(role: newRole));
+          }
+        });
       case WebSocketMessageType.unknown:
         return; // don't show unknown types
     }

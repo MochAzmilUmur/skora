@@ -116,10 +116,10 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/skora.png"
+  image_path: "assets/skoraicon.png"
   min_sdk_android: 21
 
   # (Opsional) Adaptive Icon untuk HP Android modern
   # Agar icon terlihat rapi dengan bentuk lingkaran/kotak bawaan tema HP
   adaptive_icon_background: "#0F172A" # Bisa warna hex atau path gambar background
-  adaptive_icon_foreground: "assets/skora.png"
+  adaptive_icon_foreground: "assets/skoraicon.png"

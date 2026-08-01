@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	"backend/internal/infrastructure/socket"
 	"backend/internal/models"
 	"backend/internal/validator"
 
@@ -17,12 +19,13 @@ import (
 
 // UserHandler handles user CRUD endpoints.
 type UserHandler struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	Hub *socket.Hub
 }
 
 // NewUserHandler creates a new UserHandler.
-func NewUserHandler(db *gorm.DB) *UserHandler {
-	return &UserHandler{DB: db}
+func NewUserHandler(db *gorm.DB, hub *socket.Hub) *UserHandler {
+	return &UserHandler{DB: db, Hub: hub}
 }
 
 // CreateUser handles POST /api/users.
@@ -190,12 +193,6 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	callerID := c.GetInt("user_id")
-	if callerID != id {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
-		return
-	}
-
 	var req struct {
 		Role string `json:"role" binding:"required"`
 	}
@@ -203,8 +200,9 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "role is required"})
 		return
 	}
-	if req.Role != "asesor" && req.Role != "pelajar" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be asesor or pelajar"})
+	validRoles := map[string]bool{"asesor": true, "pelajar": true, "admin": true}
+	if !validRoles[req.Role] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be admin, asesor, or pelajar"})
 		return
 	}
 
@@ -214,6 +212,19 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 	}
 	var user models.User
 	h.DB.First(&user, id)
+
+	// Broadcast role_changed ke user yang bersangkutan via WebSocket
+	if h.Hub != nil {
+		go func() {
+			payload, _ := json.Marshal(map[string]any{
+				"type":     "role_changed",
+				"new_role": req.Role,
+				"user_id":  id,
+			})
+			h.Hub.SendToUser(id, payload)
+		}()
+	}
+
 	c.JSON(http.StatusOK, user)
 }
 

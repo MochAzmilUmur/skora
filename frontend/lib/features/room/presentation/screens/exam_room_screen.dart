@@ -28,7 +28,7 @@ class ExamRoomScreen extends StatefulWidget {
 class _ExamRoomScreenState extends State<ExamRoomScreen> {
   bool _isLoading = false;
   List<RoomParticipantModel> _participants = [];
-  int _questionsCount = 40;
+  int _questionsCount = 0;
   StreamSubscription<WebSocketMessage>? _wsSub;
 
   String get _roomCode => widget.room.roomCode;
@@ -36,7 +36,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   @override
   void initState() {
     super.initState();
-    _loadParticipants();
+    _loadData();
     _subscribeWs();
   }
 
@@ -46,18 +46,28 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
     super.dispose();
   }
 
-  Future<void> _loadParticipants() async {
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final res = await ApiClient.get('/rooms/${widget.room.idRoom}/participants');
-      if (res.statusCode == 200 && mounted) {
-        final list = jsonDecode(res.body) as List<dynamic>;
-        setState(() {
+      final results = await Future.wait([
+        ApiClient.get('/rooms/${widget.room.idRoom}/participants'),
+        ApiClient.get('/rooms/${widget.room.idRoom}/pertanyaans'),
+      ]);
+      if (!mounted) return;
+      final participantsRes = results[0];
+      final questionsRes = results[1];
+      setState(() {
+        if (participantsRes.statusCode == 200) {
+          final list = jsonDecode(participantsRes.body) as List<dynamic>;
           _participants = list
               .map((e) => RoomParticipantModel.fromJson(e as Map<String, dynamic>))
               .toList();
-        });
-      }
+        }
+        if (questionsRes.statusCode == 200) {
+          final list = jsonDecode(questionsRes.body) as List<dynamic>;
+          _questionsCount = list.length;
+        }
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -69,12 +79,9 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
       final data = msg.data;
       if (data['room_id'] != widget.room.idRoom) return;
 
-      if (msg.type == WebSocketMessageType.participantJoined) {
-        // Reload participants list to get full user data
-        _loadParticipants();
-      } else if (msg.type == WebSocketMessageType.examStarted) {
-        // Refresh to reflect updated participant status if needed
-        _loadParticipants();
+      if (msg.type == WebSocketMessageType.participantJoined ||
+          msg.type == WebSocketMessageType.examStarted) {
+        _loadData();
       }
     });
   }

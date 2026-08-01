@@ -80,6 +80,8 @@ class _NotificationOverlayState extends State<NotificationOverlay>
         return const Color(0xFF10B981);
       case WebSocketMessageType.examStarted:
         return const Color(0xFFF59E0B);
+      case WebSocketMessageType.roleChanged:
+        return const Color(0xFF8B5CF6);
       default:
         return const Color(0xFF64748B);
     }
@@ -93,6 +95,8 @@ class _NotificationOverlayState extends State<NotificationOverlay>
         return Icons.person_add_outlined;
       case WebSocketMessageType.examStarted:
         return Icons.play_circle_outline;
+      case WebSocketMessageType.roleChanged:
+        return Icons.manage_accounts_outlined;
       default:
         return Icons.notifications_outlined;
     }

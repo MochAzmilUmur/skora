@@ -213,7 +213,7 @@ Tabel `pertanyaan` juga belum punya kolom `created_at` dan `deleted_at`.
 
 ### 🐛 Bug yang Diketahui
 - [x] IP address hardcoded — `192.168.1.19` di `api_client.dart`
-- [ ] Participants di ExamRoomScreen masih dummy (`_participantsCount = 12`)
+- [x] Participants di ExamRoomScreen masih dummy (`_participantsCount = 12`)
 
 ---
 

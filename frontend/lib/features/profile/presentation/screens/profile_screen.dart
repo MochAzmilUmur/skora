@@ -88,50 +88,9 @@ class _InfoTab extends StatefulWidget {
 }
 
 class _InfoTabState extends State<_InfoTab> {
-  late final TextEditingController _namaCtrl;
-  late final TextEditingController _emailCtrl;
-  bool _editing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _namaCtrl = TextEditingController(text: widget.notifier.user?.nama ?? '');
-    _emailCtrl = TextEditingController(text: widget.notifier.user?.email ?? '');
-  }
-
-  @override
-  void dispose() {
-    _namaCtrl.dispose();
-    _emailCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final ok = await widget.notifier.updateProfile(
-      nama: _namaCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-    );
-    if (!mounted) return;
-    if (ok) {
-      setState(() => _editing = false);
-      _showSnack(widget.notifier.successMessage, isError: false);
-    } else {
-      _showSnack(widget.notifier.error, isError: true);
-    }
-    widget.notifier.clearStatus();
-  }
-
-  void _showSnack(String msg, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red : Colors.green,
-    ));
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = widget.notifier.user;
-    final saving = widget.notifier.isSaving;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -159,34 +118,20 @@ class _InfoTabState extends State<_InfoTab> {
           ],
           const SizedBox(height: 24),
 
-          // Role selector
-          _RoleSelectorCard(notifier: widget.notifier),
-          const SizedBox(height: 16),
-
-          // Profile fields
+          // Profile fields — read-only, hanya admin yang bisa ubah via web panel
           _SectionCard(
             title: 'Data Pribadi',
-            trailing: _editing
-                ? null
-                : TextButton(
-                    onPressed: () => setState(() => _editing = true),
-                    child: const Text('Edit',
-                        style: TextStyle(color: Colors.blue)),
-                  ),
             children: [
-              _Field(
+              _ReadonlyField(
                 label: 'Nama Lengkap',
-                controller: _namaCtrl,
-                enabled: _editing,
+                value: user?.nama ?? '-',
                 icon: Icons.person_outline,
               ),
               const SizedBox(height: 12),
-              _Field(
+              _ReadonlyField(
                 label: 'Email',
-                controller: _emailCtrl,
-                enabled: _editing,
+                value: user?.email ?? '-',
                 icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
               ),
               if (user != null) ...[
                 const SizedBox(height: 12),
@@ -200,54 +145,6 @@ class _InfoTabState extends State<_InfoTab> {
               ],
             ],
           ),
-
-          if (_editing) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: saving
-                        ? null
-                        : () {
-                            setState(() => _editing = false);
-                            _namaCtrl.text = user?.nama ?? '';
-                            _emailCtrl.text = user?.email ?? '';
-                          },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFF334155)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Batal'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: saving ? null : _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Text('Simpan'),
-                  ),
-                ),
-              ],
-            ),
-          ],
 
           const SizedBox(height: 24),
           // Logout
@@ -502,112 +399,10 @@ class _RoleChip extends StatelessWidget {
   }
 }
 
-class _RoleSelectorCard extends StatelessWidget {
-  final ProfileNotifier notifier;
-  const _RoleSelectorCard({required this.notifier});
-
-  @override
-  Widget build(BuildContext context) {
-    final current = notifier.user?.role ?? 'pelajar';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A2942),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Peran Saya',
-              style: TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _RoleOption(
-                label: 'Asesor',
-                subtitle: 'Buat & kelola ujian',
-                icon: Icons.admin_panel_settings_outlined,
-                selected: current == 'asesor',
-                onTap: () => notifier.setRole('asesor'),
-              ),
-              const SizedBox(width: 12),
-              _RoleOption(
-                label: 'Peserta',
-                subtitle: 'Ikuti ujian',
-                icon: Icons.school_outlined,
-                selected: current == 'pelajar',
-                onTap: () => notifier.setRole('pelajar'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoleOption extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-  const _RoleOption({
-    required this.label,
-    required this.subtitle,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? Colors.blue : const Color(0xFF475569);
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.blue.withValues(alpha: 0.1)
-                : const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? Colors.blue : const Color(0xFF334155),
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(height: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: selected ? Colors.white : const Color(0xFF94A3B8),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: Color(0xFF64748B), fontSize: 11),
-                  textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionCard extends StatelessWidget {
   final String title;
-  final Widget? trailing;
   final List<Widget> children;
-  const _SectionCard(
-      {required this.title, this.trailing, required this.children});
+  const _SectionCard({required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -622,68 +417,14 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500)),
-              const Spacer(),
-              if (trailing != null) trailing!,
-            ],
-          ),
+          Text(title,
+              style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 12),
           ...children,
         ],
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final bool enabled;
-  final IconData icon;
-  final TextInputType keyboardType;
-  const _Field({
-    required this.label,
-    required this.controller,
-    required this.enabled,
-    required this.icon,
-    this.keyboardType = TextInputType.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Color(0xFF64748B)),
-        prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
-        filled: true,
-        fillColor: enabled ? const Color(0xFF0F172A) : const Color(0xFF0A1628),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.blue),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF1E293B)),
-        ),
       ),
     );
   }
@@ -704,8 +445,10 @@ class _ReadonlyField extends StatelessWidget {
         const SizedBox(width: 8),
         Text('$label: ',
             style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-        Text(value,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+        ),
       ],
     );
   }

@@ -4,6 +4,7 @@ import '../room/presentation/screens/create_exam_room_screen.dart';
 import '../room/presentation/screens/exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
+import '../room/data/models/websocket_message_model.dart';
 import '../room/data/repositories/room_repository_impl.dart';
 import '../room/data/datasources/room_remote_datasource.dart';
 import '../../core/services/auth_storage_service.dart';
@@ -38,6 +39,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadUserData().then((_) => _loadRooms());
     _checkSessionTimeout();
+    // Listen for real-time role changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<WebSocketService>().messageStream.listen((msg) {
+        if (!mounted) return;
+        if (msg.type == WebSocketMessageType.roleChanged) {
+          _loadUserData();
+        }
+      });
+    });
   }
 
   Future<void> _checkSessionTimeout() async {
@@ -306,6 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildQuickActions() {
+    final isPelajar = _currentUser?.role == 'pelajar';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -313,18 +324,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(
-              child: InkWell(
-                onTap: _navigateToCreateRoom,
-                child: _buildActionCard(
-                  icon: Icons.add_circle_outline,
-                  title: 'Create Room',
-                  subtitle: 'Host a new competency\ntest session',
-                  color: Colors.blue,
+            if (!isPelajar) ...[
+              Expanded(
+                child: InkWell(
+                  onTap: _navigateToCreateRoom,
+                  child: _buildActionCard(
+                    icon: Icons.add_circle_outline,
+                    title: 'Create Room',
+                    subtitle: 'Host a new competency\ntest session',
+                    color: Colors.blue,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
+              const SizedBox(width: 16),
+            ],
             Expanded(
               child: InkWell(
                 onTap: _scanQRCode,

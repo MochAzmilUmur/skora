@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -15,15 +16,28 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// CheckOrigin memvalidasi origin request untuk mencegah CSRF via WebSocket
+	// CheckOrigin:
+	// - Native mobile client (Flutter/Android) tidak mengirim Origin header → izinkan
+	// - Browser client divalidasi terhadap WS_ALLOWED_ORIGIN
+	// - Jika WS_ALLOWED_ORIGIN kosong, semua origin diizinkan (dev mode)
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		allowed := os.Getenv("WS_ALLOWED_ORIGIN")
-		if allowed == "" {
-			// Fallback development: izinkan semua (jangan di production tanpa WS_ALLOWED_ORIGIN)
+		if origin == "" {
+			// Native mobile/desktop client — tidak ada Origin header, aman diizinkan
 			return true
 		}
-		return origin == allowed
+		allowed := os.Getenv("WS_ALLOWED_ORIGIN")
+		if allowed == "" {
+			// Dev fallback: izinkan semua browser origin
+			return true
+		}
+		// Dukung multiple origin dipisah koma: "http://localhost:3000,https://admin.skora.id"
+		for _, o := range strings.Split(allowed, ",") {
+			if strings.TrimSpace(o) == origin {
+				return true
+			}
+		}
+		return false
 	},
 }
 

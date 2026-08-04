@@ -201,14 +201,16 @@ class UjianRemoteDataSourceImpl implements UjianRemoteDataSource {
     required int questionId,
     String? answerText,
     int? selectedOptionId,
+    String? fileUrl,
   }) async {
     final response = await ApiClient.post('/answers', {
       'session_id': sessionId,
       'question_id': questionId,
       if (answerText != null) 'answer_text': answerText,
       if (selectedOptionId != null) 'selected_option_id': selectedOptionId,
+      if (fileUrl != null) 'file_url': fileUrl,
     });
-    if (response.statusCode == 201) {
+    if (response.statusCode == 201 || response.statusCode == 200) {
       return AnswerModel.fromJson(jsonDecode(response.body));
     }
     throw Exception('Failed to submit answer: ${response.statusCode}');

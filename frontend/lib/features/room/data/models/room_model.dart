@@ -1,12 +1,26 @@
 import 'package:skora/features/auth/data/models/auth/user.dart';
 
+enum RoomType {
+  praktikum('PRAKTIKUM'),
+  pilihanGanda('PILIHAN_GANDA'),
+  hybrid('HYBRID');
+
+  final String value;
+  const RoomType(this.value);
+
+  static RoomType fromString(String v) => RoomType.values.firstWhere(
+        (e) => e.value == v,
+        orElse: () => RoomType.pilihanGanda,
+      );
+}
+
 class RoomModel {
   final String idRoom;
   final String roomName;
   final String description;
   final int durasi;
   final DateTime? startDate;
-  final String questionTypes;
+  final RoomType roomType;
   final bool shuffleQuestions;
   final String roomCode;
   final int createdBy;
@@ -19,7 +33,7 @@ class RoomModel {
     this.description = '',
     required this.durasi,
     this.startDate,
-    this.questionTypes = '',
+    this.roomType = RoomType.pilihanGanda,
     this.shuffleQuestions = false,
     this.roomCode = '',
     required this.createdBy,
@@ -34,7 +48,7 @@ class RoomModel {
       description: json['description'] as String? ?? '',
       durasi: json['durasi'] as int,
       startDate: json['start_date'] != null ? DateTime.tryParse(json['start_date'] as String) : null,
-      questionTypes: json['question_types'] as String? ?? '',
+      roomType: RoomType.fromString(json['room_type'] as String? ?? 'PILIHAN_GANDA'),
       shuffleQuestions: json['shuffle_questions'] as bool? ?? false,
       roomCode: json['room_code'] as String? ?? '',
       createdBy: json['created_by'] as int,
@@ -50,7 +64,7 @@ class RoomModel {
       'description': description,
       'durasi': durasi,
       if (startDate != null) 'start_date': startDate!.toIso8601String(),
-      'question_types': questionTypes,
+      'room_type': roomType.value,
       'shuffle_questions': shuffleQuestions,
       'room_code': roomCode,
       'created_by': createdBy,
@@ -65,7 +79,7 @@ class RoomModel {
     String? description,
     int? durasi,
     DateTime? startDate,
-    String? questionTypes,
+    RoomType? roomType,
     bool? shuffleQuestions,
     String? roomCode,
     int? createdBy,
@@ -78,7 +92,7 @@ class RoomModel {
       description: description ?? this.description,
       durasi: durasi ?? this.durasi,
       startDate: startDate ?? this.startDate,
-      questionTypes: questionTypes ?? this.questionTypes,
+      roomType: roomType ?? this.roomType,
       shuffleQuestions: shuffleQuestions ?? this.shuffleQuestions,
       roomCode: roomCode ?? this.roomCode,
       createdBy: createdBy ?? this.createdBy,

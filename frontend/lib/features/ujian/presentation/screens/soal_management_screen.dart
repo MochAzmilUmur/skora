@@ -65,7 +65,11 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
           value: context.read<SoalNotifier>(),
-          child: SoalFormScreen(roomId: widget.room.idRoom, soal: soal),
+          child: SoalFormScreen(
+            roomId: widget.room.idRoom,
+            roomType: widget.room.roomType,
+            soal: soal,
+          ),
         ),
       ),
     );
@@ -283,6 +287,7 @@ class _SoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMultiple = soal.typePertanyaan == TypePertanyaan.multipleChoice;
+    final isFileUpload = soal.typePertanyaan == TypePertanyaan.fileUpload;
     final hasImage = soal.gambarUrl != null && soal.gambarUrl!.isNotEmpty;
 
     return Container(
@@ -318,13 +323,19 @@ class _SoalCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isMultiple
                         ? Colors.purple.withValues(alpha: 0.2)
-                        : Colors.teal.withValues(alpha: 0.2),
+                        : isFileUpload
+                            ? Colors.orange.withValues(alpha: 0.2)
+                            : Colors.teal.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    isMultiple ? 'Pilihan Ganda' : 'Essay',
+                    isMultiple ? 'Pilihan Ganda' : isFileUpload ? 'Upload File' : 'Essay',
                     style: TextStyle(
-                      color: isMultiple ? Colors.purpleAccent : Colors.tealAccent,
+                      color: isMultiple
+                          ? Colors.purpleAccent
+                          : isFileUpload
+                              ? Colors.orangeAccent
+                              : Colors.tealAccent,
                       fontSize: 11,
                     ),
                   ),

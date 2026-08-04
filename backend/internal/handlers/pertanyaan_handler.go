@@ -54,6 +54,31 @@ func (h *PertanyaanHandler) CreatePertanyaan(c *gin.Context) {
 		return
 	}
 
+	// Enforce room_type ↔ type_pertanyaan contract
+	switch room.RoomType {
+	case "PRAKTIKUM":
+		if req.TypePertanyaan != "file_upload" {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "type_pertanyaan", Message: "room PRAKTIKUM hanya menerima soal tipe file_upload"},
+			})
+			return
+		}
+	case "PILIHAN_GANDA":
+		if req.TypePertanyaan != "multiple_choice" {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "type_pertanyaan", Message: "room PILIHAN_GANDA hanya menerima soal tipe multiple_choice"},
+			})
+			return
+		}
+	case "HYBRID":
+		if req.TypePertanyaan != "multiple_choice" && req.TypePertanyaan != "text" {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "type_pertanyaan", Message: "room HYBRID hanya menerima soal tipe multiple_choice atau text"},
+			})
+			return
+		}
+	}
+
 	// Build question options
 	options := make([]models.QuestionOption, len(req.QuestionOptions))
 	for i, opt := range req.QuestionOptions {

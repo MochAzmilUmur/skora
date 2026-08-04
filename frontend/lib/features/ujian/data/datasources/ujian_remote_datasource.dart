@@ -50,6 +50,7 @@ abstract class UjianRemoteDataSource {
     required int questionId,
     String? answerText,
     int? selectedOptionId,
+    String? fileUrl,
   });
   
   Future<List<AnswerModel>> getAnswersBySession(int sessionId);

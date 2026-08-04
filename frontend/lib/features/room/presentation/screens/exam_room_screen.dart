@@ -64,8 +64,10 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               .toList();
         }
         if (questionsRes.statusCode == 200) {
-          final list = jsonDecode(questionsRes.body) as List<dynamic>;
-          _questionsCount = list.length;
+          final body = jsonDecode(questionsRes.body) as Map<String, dynamic>;
+          _questionsCount = (body['total'] as num?)?.toInt() ??
+              (body['data'] as List?)?.length ??
+              0;
         }
       });
     } finally {
@@ -232,7 +234,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
       MaterialPageRoute(
         builder: (_) => SoalManagementScreen(room: widget.room),
       ),
-    );
+    ).then((_) => _loadData());
   }
 
   void _viewRekamNilai() {

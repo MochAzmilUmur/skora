@@ -46,6 +46,23 @@ func InitDB() *gorm.DB {
 		log.Println("Database migration completed successfully")
 	}
 
+	// ponytail: explicit column additions for columns that may predate AutoMigrate.
+	// These are idempotent — IF NOT EXISTS guards ensure safe re-runs.
+	rawMigrations := []string{
+		// answers.file_url — added in file_upload feature
+		`ALTER TABLE answers ADD COLUMN IF NOT EXISTS file_url TEXT`,
+		// hasil_ujian — jawaban_benar / jawaban_salah may not exist if table was created early
+		`ALTER TABLE hasil_ujian ADD COLUMN IF NOT EXISTS jawaban_benar INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE hasil_ujian ADD COLUMN IF NOT EXISTS jawaban_salah INTEGER NOT NULL DEFAULT 0`,
+		// pertanyaan.deleted_at was added to model but column may not exist in older DBs
+		`ALTER TABLE pertanyaan ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+	}
+	for _, sql := range rawMigrations {
+		if err := db.Exec(sql).Error; err != nil {
+			log.Printf("WARNING: migration statement failed: %v — SQL: %s", err, sql)
+		}
+	}
+
 	return db
 }
 

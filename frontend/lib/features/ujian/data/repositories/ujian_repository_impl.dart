@@ -165,6 +165,7 @@ class UjianRepositoryImpl implements UjianRepository {
     required int questionId,
     String? answerText,
     int? selectedOptionId,
+    String? fileUrl,
   }) async {
     try {
       final answer = await remoteDataSource.submitAnswer(
@@ -172,6 +173,7 @@ class UjianRepositoryImpl implements UjianRepository {
         questionId: questionId,
         answerText: answerText,
         selectedOptionId: selectedOptionId,
+        fileUrl: fileUrl,
       );
       return Right(answer);
     } catch (e) {

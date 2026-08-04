@@ -3,7 +3,8 @@ import 'question_option_model.dart';
 
 enum TypePertanyaan {
   multipleChoice('multiple_choice'),
-  text('text');
+  text('text'),
+  fileUpload('file_upload');
 
   final String value;
   const TypePertanyaan(this.value);

@@ -52,6 +52,7 @@ abstract class UjianRepository {
     required int questionId,
     String? answerText,
     int? selectedOptionId,
+    String? fileUrl,
   });
   
   Future<Either<Failure, List<AnswerModel>>> getAnswersBySession(int sessionId);

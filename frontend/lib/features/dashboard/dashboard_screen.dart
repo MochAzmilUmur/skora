@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../room/presentation/screens/create_exam_room_screen.dart';
+import '../room/presentation/screens/room_type_picker_screen.dart';
 import '../room/presentation/screens/exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
@@ -128,17 +129,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _navigateToCreateRoom() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CreateExamRoomScreen()),
+      MaterialPageRoute(builder: (_) => const RoomTypePickerScreen()),
     );
     if (result == true) _loadRooms();
   }
 
   Future<void> _scanQRCode() async {
-    final roomCode = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(builder: (context) => const QRScannerScreen()),
+    // ponytail: show bottom sheet with 2 options — scan or manual code entry
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => _JoinRoomSheet(
+        onScanQR: () async {
+          Navigator.pop(ctx);
+          final roomCode = await Navigator.push<String>(
+            context,
+            MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+          );
+          if (roomCode != null && mounted) _joinRoomWithCode(roomCode);
+        },
+        onManualCode: (code) {
+          Navigator.pop(ctx);
+          _joinRoomWithCode(code);
+        },
+      ),
     );
-    if (roomCode != null && mounted) _joinRoomWithCode(roomCode);
   }
 
   Future<void> _joinRoomWithCode(String roomCode) async {
@@ -552,6 +570,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.description_outlined), label: 'Exams'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Results'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Join Room Bottom Sheet ─────────────────────────────────────────────────
+
+class _JoinRoomSheet extends StatefulWidget {
+  final VoidCallback onScanQR;
+  final ValueChanged<String> onManualCode;
+
+  const _JoinRoomSheet({required this.onScanQR, required this.onManualCode});
+
+  @override
+  State<_JoinRoomSheet> createState() => _JoinRoomSheetState();
+}
+
+class _JoinRoomSheetState extends State<_JoinRoomSheet> {
+  final _codeCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final code = _codeCtrl.text.trim().toUpperCase();
+    if (code.isEmpty) return;
+    widget.onManualCode(code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bergabung ke Room',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          // Manual code input
+          TextField(
+            controller: _codeCtrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 4,
+            ),
+            decoration: InputDecoration(
+              hintText: 'KODE ROOM',
+              hintStyle: const TextStyle(color: Color(0xFF475569), letterSpacing: 4),
+              filled: true,
+              fillColor: const Color(0xFF0F172A),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF3B82F6)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFF334155))),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('atau', style: TextStyle(color: Color(0xFF64748B))),
+              ),
+              const Expanded(child: Divider(color: Color(0xFF334155))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onScanQR,
+              icon: const Icon(Icons.qr_code_scanner, size: 20),
+              label: const Text('Scan QR Code'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFF334155)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
         ],
       ),
     );

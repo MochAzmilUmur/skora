@@ -59,7 +59,7 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 		RoomName:      req.RoomName,
 		Description:   req.Description,
 		Durasi:        req.Durasi,
-		QuestionTypes: req.QuestionTypes,
+		RoomType:      req.RoomType,
 		ShuffleQ:      req.ShuffleQ,
 		CreatedBy:     req.CreatedBy,
 		CreatedAt:     time.Now(),
@@ -182,8 +182,8 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	if req.Durasi > 0 {
 		updates["durasi"] = req.Durasi
 	}
-	if req.QuestionTypes != "" {
-		updates["question_types"] = req.QuestionTypes
+	if req.RoomType != "" {
+		updates["room_type"] = req.RoomType
 	}
 	if req.ShuffleQ != nil {
 		updates["shuffle_questions"] = *req.ShuffleQ

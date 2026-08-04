@@ -13,7 +13,7 @@ abstract class RoomRepository {
     required String description,
     required int durasi,
     required DateTime? startDate,
-    required String questionTypes,
+    required String roomType,
     required bool shuffleQuestions,
     required int createdBy,
   });
@@ -24,7 +24,7 @@ abstract class RoomRepository {
     String? description,
     int? durasi,
     DateTime? startDate,
-    String? questionTypes,
+    String? roomType,
     bool? shuffleQuestions,
   });
 

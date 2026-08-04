@@ -24,6 +24,7 @@ class ExamSessionNotifier extends ChangeNotifier {
   // answers: questionId → selectedOptionId (MC) or answerText (essay)
   final Map<int, int?> _selectedOptions = {};
   final Map<int, String?> _textAnswers = {};
+  final Map<int, String?> _fileAnswers = {}; // questionId → uploaded file URL
   final Set<int> _bookmarked = {};
 
   // ── Real-time feedback ─────────────────────────────────────────────────
@@ -52,10 +53,12 @@ class ExamSessionNotifier extends ChangeNotifier {
 
   int? selectedOption(int questionId) => _selectedOptions[questionId];
   String? textAnswer(int questionId) => _textAnswers[questionId];
+  String? fileAnswer(int questionId) => _fileAnswers[questionId];
   bool isBookmarked(int questionId) => _bookmarked.contains(questionId);
   bool isAnswered(int questionId) =>
       _selectedOptions.containsKey(questionId) ||
-      (_textAnswers[questionId]?.isNotEmpty ?? false);
+      (_textAnswers[questionId]?.isNotEmpty ?? false) ||
+      (_fileAnswers[questionId]?.isNotEmpty ?? false);
 
   int get answeredCount =>
       _soal.where((s) => isAnswered(s.id)).length;
@@ -133,6 +136,8 @@ class ExamSessionNotifier extends ChangeNotifier {
   }
 
   // ── Timer ──────────────────────────────────────────────────────────────
+
+  // ── Timer ──────────────────────────────────────────────────────────────
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -160,6 +165,12 @@ class ExamSessionNotifier extends ChangeNotifier {
     _saveAnswerToBackend(questionId);
   }
 
+  void setFileAnswer(int questionId, String fileUrl) {
+    _fileAnswers[questionId] = fileUrl;
+    notifyListeners();
+    _saveAnswerToBackend(questionId);
+  }
+
   void _saveAnswerToBackend(int questionId) {
     if (_sesi == null) return;
     _repo.submitAnswer(
@@ -167,6 +178,7 @@ class ExamSessionNotifier extends ChangeNotifier {
       questionId: questionId,
       selectedOptionId: _selectedOptions[questionId],
       answerText: _textAnswers[questionId],
+      fileUrl: _fileAnswers[questionId],
     );
     // fire-and-forget; errors silently ignored (optimistic local state is source of truth)
   }

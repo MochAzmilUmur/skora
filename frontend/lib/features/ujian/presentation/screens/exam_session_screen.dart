@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/network/api_client.dart';
@@ -368,9 +370,11 @@ class _QuestionCard extends StatelessWidget {
                   border: Border.all(color: Colors.blue),
                 ),
                 child: Text(
-                  soal.typePertanyaan == TypePertanyaan.multipleChoice
-                      ? 'Pilihan Ganda'
-                      : 'Essay',
+                  switch (soal.typePertanyaan) {
+                    TypePertanyaan.multipleChoice => 'Pilihan Ganda',
+                    TypePertanyaan.fileUpload => 'Upload File',
+                    _ => 'Essay',
+                  },
                   style: const TextStyle(
                       color: Colors.blue,
                       fontSize: 12,
@@ -408,6 +412,8 @@ class _QuestionCard extends StatelessWidget {
           const SizedBox(height: 24),
           if (soal.typePertanyaan == TypePertanyaan.multipleChoice)
             _MultipleChoiceOptions(soal: soal, notifier: notifier)
+          else if (soal.typePertanyaan == TypePertanyaan.fileUpload)
+            _FileUploadWidget(soal: soal, notifier: notifier)
           else
             _EssayInput(soal: soal, notifier: notifier),
         ],
@@ -556,6 +562,115 @@ class _EssayInputState extends State<_EssayInput> {
         ),
       ),
       onChanged: (v) => widget.notifier.setTextAnswer(widget.soal.id, v),
+    );
+  }
+}
+
+// ── File upload widget ─────────────────────────────────────────────────────
+
+class _FileUploadWidget extends StatefulWidget {
+  final PertanyaanModel soal;
+  final ExamSessionNotifier notifier;
+  const _FileUploadWidget({required this.soal, required this.notifier});
+
+  @override
+  State<_FileUploadWidget> createState() => _FileUploadWidgetState();
+}
+
+class _FileUploadWidgetState extends State<_FileUploadWidget> {
+  bool _uploading = false;
+  String? _error;
+
+  Future<void> _pickAndUpload() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.single.path == null) return;
+
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+
+    try {
+      final file = File(result.files.single.path!);
+      final ds = UjianRemoteDataSourceImpl();
+      final url = await ds.uploadImage(file); // ponytail: reuse existing upload endpoint
+      widget.notifier.setFileAnswer(widget.soal.id, url);
+    } catch (e) {
+      setState(() => _error = 'Upload gagal: $e');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uploaded = widget.notifier.fileAnswer(widget.soal.id);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (uploaded != null && uploaded.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    uploaded.split('/').last,
+                    style: const TextStyle(color: Colors.green, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.green, size: 18),
+                  onPressed: () => widget.notifier.setFileAnswer(widget.soal.id, ''),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+          ),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _uploading ? null : _pickAndUpload,
+            icon: _uploading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
+                  )
+                : const Icon(Icons.upload_file, size: 20),
+            label: Text(_uploading
+                ? 'Mengupload...'
+                : uploaded != null && uploaded.isNotEmpty
+                    ? 'Ganti File'
+                    : 'Pilih File'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.blue,
+              side: const BorderSide(color: Color(0xFF334155)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -10,9 +10,15 @@ import '../providers/soal_notifier.dart';
 /// Pass [soal] to enter edit mode.
 class SoalFormScreen extends StatefulWidget {
   final String roomId;
+  final RoomType roomType;
   final PertanyaanModel? soal;
 
-  const SoalFormScreen({super.key, required this.roomId, this.soal});
+  const SoalFormScreen({
+    super.key,
+    required this.roomId,
+    required this.roomType,
+    this.soal,
+  });
 
   @override
   State<SoalFormScreen> createState() => _SoalFormScreenState();
@@ -33,9 +39,26 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
 
   bool get _isEdit => widget.soal != null;
 
+  static TypePertanyaan _defaultTypeFor(RoomType rt) {
+    switch (rt) {
+      case RoomType.praktikum:    return TypePertanyaan.fileUpload;
+      case RoomType.pilihanGanda: return TypePertanyaan.multipleChoice;
+      case RoomType.hybrid:       return TypePertanyaan.multipleChoice;
+    }
+  }
+
+  List<TypePertanyaan> get _allowedTypes {
+    switch (widget.roomType) {
+      case RoomType.praktikum:    return [TypePertanyaan.fileUpload];
+      case RoomType.pilihanGanda: return [TypePertanyaan.multipleChoice];
+      case RoomType.hybrid:       return [TypePertanyaan.multipleChoice, TypePertanyaan.text];
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _type = _defaultTypeFor(widget.roomType);
     if (_isEdit) {
       final s = widget.soal!;
       _textCtrl.text = s.pertanyaanText;
@@ -265,7 +288,7 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
                       height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (context, error, stackTrace) => Container(
                         height: 120,
                         color: Colors.black26,
                         child: const Center(
@@ -314,12 +337,19 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
       );
 
   Widget _typeSelector() {
+    final allowed = _allowedTypes;
+    final locked = allowed.length == 1;
     return Row(
-      children: TypePertanyaan.values.map((t) {
+      children: allowed.map((t) {
         final selected = t == _type;
+        final label = switch (t) {
+          TypePertanyaan.multipleChoice => 'Pilihan Ganda',
+          TypePertanyaan.text           => 'Essay',
+          TypePertanyaan.fileUpload     => 'Upload File',
+        };
         return Expanded(
           child: GestureDetector(
-            onTap: () => setState(() {
+            onTap: locked ? null : () => setState(() {
               _type = t;
               if (t == TypePertanyaan.multipleChoice && _options.isEmpty) {
                 _options.add(_OptionEntry(textCtrl: TextEditingController()));
@@ -336,14 +366,24 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
                   color: selected ? Colors.blue : Colors.grey.shade700,
                 ),
               ),
-              child: Text(
-                t == TypePertanyaan.multipleChoice ? 'Pilihan Ganda' : 'Essay',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected ? Colors.white : Colors.grey,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: selected ? Colors.white : Colors.grey,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (locked) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.lock_outline, size: 12,
+                        color: selected ? Colors.white70 : Colors.grey),
+                  ],
+                ],
               ),
             ),
           ),

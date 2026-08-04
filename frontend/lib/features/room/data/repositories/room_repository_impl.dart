@@ -51,7 +51,7 @@ class RoomRepositoryImpl implements RoomRepository {
     required String description,
     required int durasi,
     required DateTime? startDate,
-    required String questionTypes,
+    required String roomType,
     required bool shuffleQuestions,
     required int createdBy,
   }) async {
@@ -60,8 +60,8 @@ class RoomRepositoryImpl implements RoomRepository {
         'room_name': roomName,
         'description': description,
         'durasi': durasi,
-        if (startDate != null) 'start_date': startDate.toIso8601String(),
-        'question_types': questionTypes,
+        if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
+        'room_type': roomType,
         'shuffle_questions': shuffleQuestions,
         'created_by': createdBy,
       };
@@ -78,7 +78,7 @@ class RoomRepositoryImpl implements RoomRepository {
     String? description,
     int? durasi,
     DateTime? startDate,
-    String? questionTypes,
+    String? roomType,
     bool? shuffleQuestions,
   }) async {
     try {
@@ -86,8 +86,8 @@ class RoomRepositoryImpl implements RoomRepository {
         if (roomName != null) 'room_name': roomName,
         if (description != null) 'description': description,
         if (durasi != null) 'durasi': durasi,
-        if (startDate != null) 'start_date': startDate.toIso8601String(),
-        if (questionTypes != null) 'question_types': questionTypes,
+        if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
+        if (roomType != null) 'room_type': roomType,
         if (shuffleQuestions != null) 'shuffle_questions': shuffleQuestions,
       };
       return Right(await remoteDataSource.updateRoom(roomId, data));

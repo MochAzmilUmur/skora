@@ -44,18 +44,53 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		return
 	}
 
-	// Validate selected_option_id if provided
-	if req.SelectedOptionID != nil {
+	// Type-based validation: enforce correct answer fields per question type
+	switch pertanyaan.TypePertanyaan {
+	case "multiple_choice":
+		if req.SelectedOptionID == nil {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "selected_option_id", Message: "wajib diisi untuk soal pilihan ganda"},
+			})
+			return
+		}
+		// Verify option belongs to this question
 		var option models.QuestionOption
 		if err := h.DB.First(&option, *req.SelectedOptionID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Selected option not found"})
 			return
 		}
-		// Verify option belongs to the question
 		if option.QuestionID != req.QuestionID {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Selected option does not belong to this question"})
 			return
 		}
+	case "text":
+		if req.AnswerText == nil || *req.AnswerText == "" {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "answer_text", Message: "wajib diisi untuk soal essay"},
+			})
+			return
+		}
+	case "file_upload":
+		if req.FileURL == nil || *req.FileURL == "" {
+			validator.AbortWithValidationErrors(c, []validator.FieldError{
+				{Field: "file_url", Message: "wajib diisi untuk soal upload file"},
+			})
+			return
+		}
+	}
+
+	// Upsert: if answer for this session+question already exists, update it
+	var existing models.Answer
+	if h.DB.Where("session_id = ? AND question_id = ?", req.SessionID, req.QuestionID).First(&existing).Error == nil {
+		updates := map[string]any{
+			"answer_text":        req.AnswerText,
+			"selected_option_id": req.SelectedOptionID,
+			"file_url":           req.FileURL,
+			"answered_at":        time.Now(),
+		}
+		h.DB.Model(&existing).Updates(updates)
+		c.JSON(http.StatusOK, existing)
+		return
 	}
 
 	answer := models.Answer{
@@ -63,6 +98,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		QuestionID:       req.QuestionID,
 		AnswerText:       req.AnswerText,
 		SelectedOptionID: req.SelectedOptionID,
+		FileURL:          req.FileURL,
 		AnsweredAt:       time.Now(),
 	}
 

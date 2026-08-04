@@ -8,6 +8,7 @@ class AnswerModel {
   final int questionId;
   final String? answerText;
   final int? selectedOptionId;
+  final String? fileUrl;
   final DateTime answeredAt;
   final SesiUjianModel? sesiUjian;
   final PertanyaanModel? pertanyaan;
@@ -19,6 +20,7 @@ class AnswerModel {
     required this.questionId,
     this.answerText,
     this.selectedOptionId,
+    this.fileUrl,
     required this.answeredAt,
     this.sesiUjian,
     this.pertanyaan,
@@ -32,6 +34,7 @@ class AnswerModel {
       questionId: json['question_id'] as int,
       answerText: json['answer_text'] as String?,
       selectedOptionId: json['selected_option_id'] as int?,
+      fileUrl: json['file_url'] as String?,
       answeredAt: DateTime.parse(json['answered_at'] as String),
       sesiUjian: json['sesi_ujian'] != null
           ? SesiUjianModel.fromJson(json['sesi_ujian'] as Map<String, dynamic>)
@@ -52,6 +55,7 @@ class AnswerModel {
       'question_id': questionId,
       if (answerText != null) 'answer_text': answerText,
       if (selectedOptionId != null) 'selected_option_id': selectedOptionId,
+      if (fileUrl != null) 'file_url': fileUrl,
       'answered_at': answeredAt.toIso8601String(),
       if (sesiUjian != null) 'sesi_ujian': sesiUjian!.toJson(),
       if (pertanyaan != null) 'pertanyaan': pertanyaan!.toJson(),
@@ -65,6 +69,7 @@ class AnswerModel {
     int? questionId,
     String? answerText,
     int? selectedOptionId,
+    String? fileUrl,
     DateTime? answeredAt,
     SesiUjianModel? sesiUjian,
     PertanyaanModel? pertanyaan,
@@ -76,6 +81,7 @@ class AnswerModel {
       questionId: questionId ?? this.questionId,
       answerText: answerText ?? this.answerText,
       selectedOptionId: selectedOptionId ?? this.selectedOptionId,
+      fileUrl: fileUrl ?? this.fileUrl,
       answeredAt: answeredAt ?? this.answeredAt,
       sesiUjian: sesiUjian ?? this.sesiUjian,
       pertanyaan: pertanyaan ?? this.pertanyaan,

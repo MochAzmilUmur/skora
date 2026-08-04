@@ -84,23 +84,23 @@ type ChangePasswordRequest struct {
 
 // CreateRoomRequest validates the POST /api/rooms payload.
 type CreateRoomRequest struct {
-	RoomName      string `json:"room_name" binding:"required,min=3,max=200"`
-	Description   string `json:"description" binding:"omitempty,max=1000"`
-	Durasi        int    `json:"durasi" binding:"required,min=1,max=480"`
-	StartDate     string `json:"start_date" binding:"omitempty"`
-	QuestionTypes string `json:"question_types" binding:"omitempty,oneof=multiple_choice text mixed"`
-	ShuffleQ      bool   `json:"shuffle_questions"`
-	CreatedBy     int    `json:"created_by" binding:"required,min=1"`
+	RoomName    string `json:"room_name" binding:"required,min=3,max=200"`
+	Description string `json:"description" binding:"omitempty,max=1000"`
+	Durasi      int    `json:"durasi" binding:"required,min=1,max=480"`
+	StartDate   string `json:"start_date" binding:"omitempty"`
+	RoomType    string `json:"room_type" binding:"required,oneof=PRAKTIKUM PILIHAN_GANDA HYBRID"`
+	ShuffleQ    bool   `json:"shuffle_questions"`
+	CreatedBy   int    `json:"created_by" binding:"required,min=1"`
 }
 
 // UpdateRoomRequest validates the PUT /api/rooms/:id payload.
 type UpdateRoomRequest struct {
-	RoomName      string `json:"room_name" binding:"omitempty,min=3,max=200"`
-	Description   string `json:"description" binding:"omitempty,max=1000"`
-	Durasi        int    `json:"durasi" binding:"omitempty,min=1,max=480"`
-	StartDate     string `json:"start_date" binding:"omitempty"`
-	QuestionTypes string `json:"question_types" binding:"omitempty,oneof=multiple_choice text mixed"`
-	ShuffleQ      *bool  `json:"shuffle_questions"`
+	RoomName    string `json:"room_name" binding:"omitempty,min=3,max=200"`
+	Description string `json:"description" binding:"omitempty,max=1000"`
+	Durasi      int    `json:"durasi" binding:"omitempty,min=1,max=480"`
+	StartDate   string `json:"start_date" binding:"omitempty"`
+	RoomType    string `json:"room_type" binding:"omitempty,oneof=PRAKTIKUM PILIHAN_GANDA HYBRID"`
+	ShuffleQ    *bool  `json:"shuffle_questions"`
 }
 
 // JoinRoomRequest validates the POST /api/rooms/join payload.
@@ -131,8 +131,8 @@ type CreatePertanyaanRequest struct {
 	RoomID          string                          `json:"room_id" binding:"required"`
 	PertanyaanText  string                          `json:"pertanyaan_text" binding:"required,min=5,max=5000"`
 	GambarURL       string                          `json:"gambar_url" binding:"omitempty"`
-	TypePertanyaan  string                          `json:"type_pertanyaan" binding:"required,oneof=multiple_choice text"`
-	QuestionOptions []CreatePertanyaanOptionRequest  `json:"question_options" binding:"omitempty"`
+	TypePertanyaan  string                          `json:"type_pertanyaan" binding:"required,oneof=multiple_choice text file_upload"`
+	QuestionOptions []CreatePertanyaanOptionRequest `json:"question_options" binding:"omitempty"`
 }
 
 // ValidateOptions checks that multiple_choice has at least 2 options and exactly 1 correct answer.
@@ -165,7 +165,7 @@ func (r *CreatePertanyaanRequest) ValidateOptions() []FieldError {
 type UpdatePertanyaanRequest struct {
 	PertanyaanText string `json:"pertanyaan_text" binding:"omitempty,min=5,max=5000"`
 	GambarURL      string `json:"gambar_url" binding:"omitempty"`
-	TypePertanyaan string `json:"type_pertanyaan" binding:"omitempty,oneof=multiple_choice text"`
+	TypePertanyaan string `json:"type_pertanyaan" binding:"omitempty,oneof=multiple_choice text file_upload"`
 }
 
 // ──────────────────────────────────────────────
@@ -193,6 +193,7 @@ type CreateAnswerRequest struct {
 	QuestionID       int     `json:"question_id" binding:"required,min=1"`
 	AnswerText       *string `json:"answer_text"`
 	SelectedOptionID *int    `json:"selected_option_id"`
+	FileURL          *string `json:"file_url"`
 }
 
 // ──────────────────────────────────────────────
@@ -295,12 +296,12 @@ func FormatBindingErrors(err error) []FieldError {
 // formatTagMessage converts a gin binding error into a human-readable message.
 func formatTagMessage(errStr string) string {
 	tagMap := map[string]string{
-		"'required'":   "is required",
-		"'email'":      "must be a valid email address",
-		"'min'":        "is too short",
-		"'max'":        "is too long",
-		"'oneof'":      "must be one of the allowed values",
-		"'uuid'":       "must be a valid UUID",
+		"'required'": "is required",
+		"'email'":    "must be a valid email address",
+		"'min'":      "is too short",
+		"'max'":      "is too long",
+		"'oneof'":    "must be one of the allowed values",
+		"'uuid'":     "must be a valid UUID",
 	}
 
 	for tag, msg := range tagMap {

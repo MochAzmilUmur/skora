@@ -22,17 +22,17 @@ func (User) TableName() string {
 }
 
 type Room struct {
-	IDRoom        uuid.UUID  `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
-	RoomName      string     `json:"room_name" gorm:"column:room_name"`
-	Description   string     `json:"description" gorm:"column:description"`
-	Durasi        int        `json:"durasi" gorm:"column:durasi"`
-	StartDate     *time.Time `json:"start_date" gorm:"column:start_date"`
-	QuestionTypes string     `json:"question_types" gorm:"column:question_types"`
-	ShuffleQ      bool       `json:"shuffle_questions" gorm:"column:shuffle_questions"`
-	RoomCode      string     `json:"room_code" gorm:"column:room_code;uniqueIndex"`
-	CreatedBy     int        `json:"created_by" gorm:"column:created_by"`
-	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at"`
-	User          User       `json:"user" gorm:"foreignKey:CreatedBy;references:IDUsers"`
+	IDRoom      uuid.UUID  `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
+	RoomName    string     `json:"room_name" gorm:"column:room_name"`
+	Description string     `json:"description" gorm:"column:description"`
+	Durasi      int        `json:"durasi" gorm:"column:durasi"`
+	StartDate   *time.Time `json:"start_date" gorm:"column:start_date"`
+	RoomType    string     `json:"room_type" gorm:"type:enum('PRAKTIKUM','PILIHAN_GANDA','HYBRID');default:'PILIHAN_GANDA';column:room_type"`
+	ShuffleQ    bool       `json:"shuffle_questions" gorm:"column:shuffle_questions"`
+	RoomCode    string     `json:"room_code" gorm:"column:room_code;uniqueIndex"`
+	CreatedBy   int        `json:"created_by" gorm:"column:created_by"`
+	CreatedAt   time.Time  `json:"created_at" gorm:"column:created_at"`
+	User        User       `json:"user" gorm:"foreignKey:CreatedBy;references:IDUsers"`
 }
 
 func (Room) TableName() string {
@@ -58,7 +58,7 @@ type Pertanyaan struct {
 	RoomID          uuid.UUID        `json:"room_id" gorm:"type:uuid;column:room_id"`
 	PertanyaanText  string           `json:"pertanyaan_text" gorm:"type:text;column:pertanyaan_text"`
 	GambarURL       string           `json:"gambar_url,omitempty" gorm:"column:gambar_url"`
-	TypePertanyaan  string           `json:"type_pertanyaan" gorm:"type:enum('multiple_choice','text');column:type_pertanyaan"`
+	TypePertanyaan  string           `json:"type_pertanyaan" gorm:"type:enum('multiple_choice','text','file_upload');column:type_pertanyaan"`
 	CreatedAt       time.Time        `json:"created_at" gorm:"column:created_at"`
 	DeletedAt       gorm.DeletedAt   `json:"deleted_at,omitempty" gorm:"index;column:deleted_at"`
 	Room            Room             `json:"room,omitempty" gorm:"foreignKey:RoomID;references:IDRoom"`
@@ -102,6 +102,7 @@ type Answer struct {
 	QuestionID       int             `json:"question_id" gorm:"column:question_id"`
 	AnswerText       *string         `json:"answer_text" gorm:"type:text;column:answer_text"`
 	SelectedOptionID *int            `json:"selected_option_id" gorm:"column:selected_option_id"`
+	FileURL          *string         `json:"file_url" gorm:"column:file_url"`
 	AnsweredAt       time.Time       `json:"answered_at" gorm:"column:answered_at"`
 	SesiUjian        SesiUjian       `json:"sesi_ujian" gorm:"foreignKey:SessionID;references:ID"`
 	Pertanyaan       Pertanyaan      `json:"pertanyaan" gorm:"foreignKey:QuestionID;references:ID"`

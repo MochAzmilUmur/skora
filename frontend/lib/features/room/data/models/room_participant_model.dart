@@ -20,6 +20,7 @@ class RoomParticipantModel {
   final String roomId;
   final int userId;
   final ParticipantRole role;
+  final String status;
   final DateTime joinedAt;
   final RoomModel? room;
   final User? user;
@@ -29,6 +30,7 @@ class RoomParticipantModel {
     required this.roomId,
     required this.userId,
     required this.role,
+    this.status = 'active',
     required this.joinedAt,
     this.room,
     this.user,
@@ -40,6 +42,7 @@ class RoomParticipantModel {
       roomId: json['room_id'] as String,
       userId: json['user_id'] as int,
       role: ParticipantRole.fromString(json['role'] as String),
+      status: json['status'] as String? ?? 'active',
       joinedAt: DateTime.parse(json['joined_at'] as String),
       room: json['room'] != null
           ? RoomModel.fromJson(json['room'] as Map<String, dynamic>)

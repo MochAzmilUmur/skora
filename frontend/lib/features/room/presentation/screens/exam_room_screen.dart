@@ -113,7 +113,8 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
       if (data['room_id'] != widget.room.idRoom) return;
 
       if (msg.type == WebSocketMessageType.participantJoined ||
-          msg.type == WebSocketMessageType.examStarted) {
+          msg.type == WebSocketMessageType.examStarted ||
+          msg.type == WebSocketMessageType.remidiRequest) {
         _loadData();
       }
     });
@@ -861,8 +862,13 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
 
   /// Full control for the room creator (asesor).
   Widget _buildAsesorActions() {
+    final remidiPending = _participants
+        .where((p) => p.status == 'remidi_pending')
+        .toList();
+    
     return Column(
       children: [
+        if (remidiPending.isNotEmpty) ...[_buildRemidiPendingSection(), const SizedBox(height: 12)],
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -909,6 +915,163 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildRemidiPendingSection() {
+    final remidiPending = _participants
+        .where((p) => p.status == 'remidi_pending')
+        .toList();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.pending_actions, color: Colors.orange, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Permintaan Remidi (${remidiPending.length})',
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...remidiPending.map((p) => _buildRemidiRequestItem(p)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRemidiRequestItem(RoomParticipantModel participant) {
+    final name = participant.user?.nama ?? 'User #${participant.userId}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF334155)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Meminta remidi',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 32,
+              child: ElevatedButton(
+                onPressed: () => _approveRemidi(participant.userId),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: const Text('Setuju', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 32,
+              child: OutlinedButton(
+                onPressed: () => _denyRemidi(participant.userId),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: const Text('Tolak', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _approveRemidi(int userId) async {
+    final res = await ApiClient.patch(
+      '/rooms/${widget.room.idRoom}/participants/$userId/remidi',
+      {'approved': true},
+    );
+    if (!mounted) return;
+    if (res.statusCode == 200) {
+      _loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Remidi disetujui'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menyetujui remidi'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _denyRemidi(int userId) async {
+    final res = await ApiClient.patch(
+      '/rooms/${widget.room.idRoom}/participants/$userId/remidi',
+      {'approved': false},
+    );
+    if (!mounted) return;
+    if (res.statusCode == 200) {
+      _loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Remidi ditolak'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menolak remidi'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   /// Peserta only sees "Mulai Ujian" or a "Selesai" banner if already done.

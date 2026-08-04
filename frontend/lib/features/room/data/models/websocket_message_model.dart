@@ -4,6 +4,8 @@ enum WebSocketMessageType {
   examStarted,
   notification,
   roleChanged,
+  remidiRequest,
+  remidiReviewed,
   unknown;
 
   static WebSocketMessageType fromString(String type) {
@@ -18,6 +20,10 @@ enum WebSocketMessageType {
         return WebSocketMessageType.notification;
       case 'role_changed':
         return WebSocketMessageType.roleChanged;
+      case 'remidi_request':
+        return WebSocketMessageType.remidiRequest;
+      case 'remidi_reviewed':
+        return WebSocketMessageType.remidiReviewed;
       default:
         return WebSocketMessageType.unknown;
     }

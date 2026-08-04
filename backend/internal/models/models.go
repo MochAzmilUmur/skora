@@ -44,6 +44,7 @@ type RoomParticipant struct {
 	RoomID   uuid.UUID `json:"room_id" gorm:"type:uuid;column:room_id"`
 	UserID   int       `json:"user_id" gorm:"column:user_id"`
 	Role     string    `json:"role" gorm:"column:role"`
+	Status   string    `json:"status" gorm:"column:status;default:'active'"`
 	JoinedAt time.Time `json:"joined_at" gorm:"column:joined_at"`
 	Room     Room      `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	User     User      `json:"user" gorm:"foreignKey:UserID;references:IDUsers"`

@@ -161,6 +161,13 @@ func (h *SesiUjianHandler) UpdateSesiUjian(c *gin.Context) {
 		return
 	}
 
+	// Mark participant as completed so they can't re-enter without remidi approval
+	if req.Status == "completed" || req.Status == "timeout" {
+		h.DB.Model(&models.RoomParticipant{}).
+			Where("room_id = ? AND user_id = ? AND status = 'active'", sesi.RoomID, sesi.UserID).
+			Update("status", "completed")
+	}
+
 	h.DB.Preload("Room").Preload("User").First(&sesi, id)
 	c.JSON(http.StatusOK, sesi)
 }

@@ -280,6 +280,19 @@ func (h *RoomHandler) JoinRoom(c *gin.Context) {
 	// Check if already joined
 	var existing models.RoomParticipant
 	if h.DB.Where("room_id = ? AND user_id = ?", room.IDRoom, req.UserID).First(&existing).Error == nil {
+		// Block if completed or remidi denied
+		if existing.Status == "completed" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Ujian sudah selesai. Ajukan remidi kepada asesor.", "status": "completed"})
+			return
+		}
+		if existing.Status == "remidi_denied" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Permintaan remidi ditolak oleh asesor.", "status": "remidi_denied"})
+			return
+		}
+		if existing.Status == "remidi_pending" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Menunggu persetujuan remidi dari asesor.", "status": "remidi_pending"})
+			return
+		}
 		h.DB.Preload("User").First(&existing, existing.ID)
 		c.JSON(http.StatusOK, gin.H{"message": "Already joined", "room": room, "participant": existing})
 		return
@@ -289,6 +302,7 @@ func (h *RoomHandler) JoinRoom(c *gin.Context) {
 		RoomID:   room.IDRoom,
 		UserID:   req.UserID,
 		Role:     req.Role,
+		Status:   "active",
 		JoinedAt: time.Now(),
 	}
 	if err := h.DB.Create(&participant).Error; err != nil {
@@ -386,4 +400,87 @@ func (h *RoomHandler) RemoveParticipant(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Participant removed"})
+}
+
+// RequestRemidi handles POST /api/rooms/:id/remidi — peserta minta remidi.
+func (h *RoomHandler) RequestRemidi(c *gin.Context) {
+	roomID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
+
+	userID := c.GetInt("user_id")
+
+	var p models.RoomParticipant
+	if err := h.DB.Where("room_id = ? AND user_id = ?", roomID, userID).First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kamu bukan peserta room ini"})
+		return
+	}
+	if p.Status != "completed" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Hanya peserta yang sudah selesai ujian yang bisa minta remidi"})
+		return
+	}
+
+	h.DB.Model(&p).Update("status", "remidi_pending")
+
+	// Notify asesor (room creator)
+	var room models.Room
+	h.DB.First(&room, "id_room = ?", roomID)
+	var user models.User
+	h.DB.First(&user, userID)
+	payload, _ := json.Marshal(map[string]any{
+		"type":      "remidi_request",
+		"room_id":   roomID.String(),
+		"room_name": room.RoomName,
+		"user_id":   userID,
+		"user_name": user.Nama,
+	})
+	h.Hub.SendToUser(room.CreatedBy, payload)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Permintaan remidi terkirim", "status": "remidi_pending"})
+}
+
+// ReviewRemidi handles PATCH /api/rooms/:id/participants/:user_id/remidi — asesor approve/deny.
+func (h *RoomHandler) ReviewRemidi(c *gin.Context) {
+	roomID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
+	targetUserID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id"})
+		return
+	}
+
+	var body struct {
+		Approved bool `json:"approved"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "approved field required"})
+		return
+	}
+
+	var p models.RoomParticipant
+	if err := h.DB.Where("room_id = ? AND user_id = ?", roomID, targetUserID).First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Participant not found"})
+		return
+	}
+
+	newStatus := "remidi_denied"
+	if body.Approved {
+		newStatus = "active"
+	}
+	h.DB.Model(&p).Update("status", newStatus)
+
+	// Notify peserta
+	payload, _ := json.Marshal(map[string]any{
+		"type":     "remidi_reviewed",
+		"approved": body.Approved,
+		"room_id":  roomID.String(),
+	})
+	h.Hub.SendToUser(targetUserID, payload)
+
+	c.JSON(http.StatusOK, gin.H{"status": newStatus})
 }

@@ -157,6 +157,17 @@ class WebSocketService extends ChangeNotifier {
             AuthStorageService.updateCachedUser(user.copyWith(role: newRole));
           }
         });
+      case WebSocketMessageType.remidiRequest:
+        final name = json['user_name'] as String? ?? 'Peserta';
+        final room = json['room_name'] as String? ?? '';
+        title = 'Permintaan Remidi';
+        body = '$name meminta remidi untuk room "$room"';
+      case WebSocketMessageType.remidiReviewed:
+        final approved = json['approved'] as bool? ?? false;
+        title = approved ? '✅ Remidi Disetujui' : '❌ Remidi Ditolak';
+        body = approved
+            ? 'Asesor menyetujui permintaan remidi kamu. Kamu bisa mengerjakan ujian kembali.'
+            : 'Asesor menolak permintaan remidi kamu.';
       case WebSocketMessageType.unknown:
         return; // don't show unknown types
     }

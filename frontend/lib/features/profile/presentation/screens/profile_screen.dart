@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:skora/core/services/auth_storage_service.dart';
+import 'package:skora/core/services/theme_service.dart';
 import 'package:skora/core/widgets/user_avatar.dart';
 import 'package:skora/features/profile/data/datasources/user_remote_datasource.dart';
 import 'package:skora/features/profile/presentation/providers/profile_notifier.dart';
@@ -143,6 +145,16 @@ class _InfoTabState extends State<_InfoTab> {
                   icon: Icons.calendar_today_outlined,
                 ),
               ],
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Dark mode toggle
+          _SectionCard(
+            title: 'Tampilan',
+            children: [
+              _DarkModeToggle(),
             ],
           ),
 
@@ -361,6 +373,53 @@ class _SecurityTabState extends State<_SecurityTab> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Dark mode toggle ────────────────────────────────────────────────────────
+
+class _DarkModeToggle extends StatelessWidget {
+  const _DarkModeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = context.watch<ThemeNotifier>();
+    return Row(
+      children: [
+        Icon(
+          notifier.isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+          color: notifier.isDark ? const Color(0xFF94A3B8) : const Color(0xFFF59E0B),
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                notifier.isDark ? 'Mode Malam' : 'Mode Terang',
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                notifier.isDark
+                    ? 'Tampilan gelap — lebih nyaman di malam hari'
+                    : 'Tampilan terang — lebih jelas di siang hari',
+                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        Switch(
+          value: notifier.isDark,
+          onChanged: (v) => context.read<ThemeNotifier>().setDark(v),
+          activeColor: Colors.blue,
+          activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+          inactiveThumbColor: const Color(0xFFF59E0B),
+          inactiveTrackColor: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+        ),
+      ],
     );
   }
 }

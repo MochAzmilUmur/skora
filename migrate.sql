@@ -41,3 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_pertanyaan_deleted_at ON pertanyaan(deleted_at);
 
 ALTER TABLE feedbacks
   ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES users(id_users);
+
+ALTER TABLE room_participants
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';

@@ -19,7 +19,7 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -88,6 +88,8 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			rooms.GET("/:id/participants", roomHandler.GetParticipants)
 			rooms.POST("/:id/participants", roomHandler.AddParticipant)
 			rooms.DELETE("/:id/participants/:participant_id", roomHandler.RemoveParticipant)
+			rooms.POST("/:id/remidi", roomHandler.RequestRemidi)
+			rooms.PATCH("/:id/participants/:user_id/remidi", roomHandler.ReviewRemidi)
 			rooms.GET("/:id/pertanyaans", pertanyaanHandler.GetPertanyaansByRoom)
 			rooms.POST("/:id/import-excel", pertanyaanHandler.ImportExcel)
 		}

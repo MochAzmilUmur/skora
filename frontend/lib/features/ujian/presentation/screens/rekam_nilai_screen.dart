@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:skora/core/network/api_client.dart';
+import 'package:skora/core/services/auth_storage_service.dart';
 import 'package:skora/core/services/grade_export_service.dart';
 import 'package:skora/features/auth/data/models/models.dart';
 import 'package:skora/features/ujian/presentation/widgets/exam_score_chart.dart';
@@ -18,11 +19,15 @@ class _RekamNilaiScreenState extends State<RekamNilaiScreen> {
   List<HasilUjianModel> _hasils = [];
   bool _loading = true;
   String? _error;
+  int _currentUserId = 0;
 
   @override
   void initState() {
     super.initState();
     _load();
+    AuthStorageService.getUserId().then((id) {
+      if (mounted && id != null) setState(() => _currentUserId = id);
+    });
   }
 
   Future<void> _load() async {
@@ -368,6 +373,7 @@ class _RekamNilaiScreenState extends State<RekamNilaiScreen> {
                 builder: (_) => FeedbackScreen(
                   hasil: hasil,
                   pesertaNama: pesertaNama,
+                  asesorId: _currentUserId,
                 ),
               ),
             ),

@@ -131,10 +131,12 @@ type Feedback struct {
 	ID         int        `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	HasilID    int        `json:"hasil_id" gorm:"column:hasil_id"`
 	AsesorID   int        `json:"asesor_id" gorm:"column:asesor_id"`
+	SenderID   int        `json:"sender_id" gorm:"column:sender_id"`
 	Komentar   string     `json:"komentar" gorm:"type:text;column:komentar"`
 	CreatedAt  time.Time  `json:"created_at" gorm:"column:created_at"`
 	HasilUjian HasilUjian `json:"hasil_ujian" gorm:"foreignKey:HasilID;references:ID"`
 	Asesor     User       `json:"asesor" gorm:"foreignKey:AsesorID;references:IDUsers"`
+	Sender     User       `json:"sender" gorm:"foreignKey:SenderID;references:IDUsers"`
 }
 
 func (Feedback) TableName() string {

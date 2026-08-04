@@ -55,14 +55,14 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 	}
 
 	room := models.Room{
-		IDRoom:        uuid.Must(uuid.NewV7()),
-		RoomName:      req.RoomName,
-		Description:   req.Description,
-		Durasi:        req.Durasi,
-		RoomType:      req.RoomType,
-		ShuffleQ:      req.ShuffleQ,
-		CreatedBy:     req.CreatedBy,
-		CreatedAt:     time.Now(),
+		IDRoom:      uuid.Must(uuid.NewV7()),
+		RoomName:    req.RoomName,
+		Description: req.Description,
+		Durasi:      req.Durasi,
+		RoomType:    req.RoomType,
+		ShuffleQ:    req.ShuffleQ,
+		CreatedBy:   req.CreatedBy,
+		CreatedAt:   time.Now(),
 	}
 
 	// Parse start_date if provided
@@ -124,6 +124,7 @@ func (h *RoomHandler) GetRoom(c *gin.Context) {
 }
 
 // GetRoomsByUser handles GET /api/rooms/user/:user_id.
+// Returns all rooms where the user is the creator OR a participant.
 func (h *RoomHandler) GetRoomsByUser(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("user_id"))
 	if err != nil {
@@ -132,7 +133,12 @@ func (h *RoomHandler) GetRoomsByUser(c *gin.Context) {
 	}
 
 	var rooms []models.Room
-	if err := h.DB.Preload("User").Where("created_by = ?", userID).Find(&rooms).Error; err != nil {
+	if err := h.DB.Preload("User").
+		Where(
+			"id_room IN (SELECT room_id FROM room_participants WHERE user_id = ?) OR created_by = ?",
+			userID, userID,
+		).
+		Find(&rooms).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

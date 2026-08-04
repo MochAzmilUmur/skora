@@ -213,6 +213,7 @@ type CreateHasilUjianRequest struct {
 type SendFeedbackRequest struct {
 	HasilID  int    `json:"hasil_id" binding:"required,min=1"`
 	AsesorID int    `json:"asesor_id" binding:"required,min=1"`
+	SenderID int    `json:"sender_id" binding:"required,min=1"`
 	Komentar string `json:"komentar" binding:"required,min=1,max=2000"`
 }
 

@@ -13,12 +13,14 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
   Future<Either<Failure, FeedbackModel>> sendFeedback({
     required int hasilId,
     required int asesorId,
+    required int senderId,
     required String komentar,
   }) async {
     try {
       final feedback = await remoteDataSource.sendFeedback(
         hasilId: hasilId,
         asesorId: asesorId,
+        senderId: senderId,
         komentar: komentar,
       );
       return Right(feedback);

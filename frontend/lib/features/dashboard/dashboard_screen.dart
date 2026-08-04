@@ -5,7 +5,6 @@ import '../room/presentation/screens/room_type_picker_screen.dart';
 import '../room/presentation/screens/exam_room_screen.dart';
 import '../room/presentation/screens/qr_scanner_screen.dart';
 import '../room/data/models/models.dart';
-import '../room/data/models/websocket_message_model.dart';
 import '../room/data/repositories/room_repository_impl.dart';
 import '../room/data/datasources/room_remote_datasource.dart';
 import '../../core/services/auth_storage_service.dart';
@@ -55,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final valid = await AuthStorageService.isTokenValid();
     if (!valid && mounted) {
       await AuthStorageService.clearUser();
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/');
     }
   }
@@ -76,10 +76,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     if (confirm == true) {
       await AuthStorageService.clearUser();
-      if (mounted) {
-        context.read<WebSocketService>().disconnect();
-        Navigator.of(context).pushReplacementNamed('/');
-      }
+      if (!mounted) return;
+      context.read<WebSocketService>().disconnect();
+      Navigator.of(context).pushReplacementNamed('/');
     }
   }
 
@@ -135,7 +134,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _scanQRCode() async {
-    // ponytail: show bottom sheet with 2 options — scan or manual code entry
     await showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
@@ -145,8 +143,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (ctx) => _JoinRoomSheet(
         onScanQR: () async {
           Navigator.pop(ctx);
-          final roomCode = await Navigator.push<String>(
-            context,
+          if (!mounted) return;
+          final nav = Navigator.of(context);
+          final roomCode = await nav.push<String>(
             MaterialPageRoute(builder: (_) => const QRScannerScreen()),
           );
           if (roomCode != null && mounted) _joinRoomWithCode(roomCode);
@@ -168,12 +167,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     result.fold(
       (failure) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to join: ${failure.message}'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Gagal bergabung: ${failure.message}'), backgroundColor: Colors.red),
       ),
       (data) {
         final room = RoomModel.fromJson(data['room'] as Map<String, dynamic>);
+        // Reload list so room appears in Your Exams immediately
+        _loadRooms();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Joined room: ${room.roomName}'), backgroundColor: Colors.green),
+          SnackBar(content: Text('Bergabung ke room: ${room.roomName}'), backgroundColor: Colors.green),
         );
         _navigateToRoomDetails(room);
       },
@@ -425,6 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildEmptyState() {
+    final isPelajar = _currentUser?.role == 'pelajar';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(color: const Color(0xFF1A2942), borderRadius: BorderRadius.circular(12)),
@@ -434,25 +436,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           Text('No Exams Yet', style: TextStyle(color: Colors.grey[400], fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('Create your first exam room to get started', style: TextStyle(color: Colors.grey[600], fontSize: 14), textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _navigateToCreateRoom,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Room'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+          Text(
+            isPelajar
+                ? 'Join a room to start taking exams'
+                : 'Create your first exam room to get started',
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            textAlign: TextAlign.center,
           ),
+          if (!isPelajar) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _navigateToCreateRoom,
+              icon: const Icon(Icons.add),
+              label: const Text('Create Room'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildExamCard({required RoomModel room}) {
+    final isPelajar = _currentUser?.role == 'pelajar';
     final now = DateTime.now();
     final isUpcoming = room.startDate != null && room.startDate!.isAfter(now);
     final statusColor = isUpcoming ? Colors.orange : Colors.green;
@@ -484,24 +495,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: statusColor),
                 ),
                 child: Text(status, style: TextStyle(color: statusColor, fontSize: 12)),
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
-                color: const Color(0xFF1E293B),
-                onSelected: (value) {
-                  if (value == 'edit') _editRoom(room);
-                  if (value == 'delete') _deleteRoom(room);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, color: Colors.white, size: 18), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white))])),
-                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
-                ],
-              ),
+              // Only the room creator can edit/delete
+              if (!isPelajar && room.createdBy == _currentUser?.idUsers)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                  color: const Color(0xFF1E293B),
+                  onSelected: (value) {
+                    if (value == 'edit') _editRoom(room);
+                    if (value == 'delete') _deleteRoom(room);
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, color: Colors.white, size: 18), SizedBox(width: 8), Text('Edit', style: TextStyle(color: Colors.white))])),
+                    const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -555,7 +568,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1A2942),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
       ),
       child: BottomNavigationBar(
         currentIndex: _selectedIndex,

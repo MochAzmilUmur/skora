@@ -56,6 +56,11 @@ func InitDB() *gorm.DB {
 		`ALTER TABLE hasil_ujian ADD COLUMN IF NOT EXISTS jawaban_salah INTEGER NOT NULL DEFAULT 0`,
 		// pertanyaan.deleted_at was added to model but column may not exist in older DBs
 		`ALTER TABLE pertanyaan ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+		// feedbacks — columns may not exist if table was created before this feature
+		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS hasil_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS asesor_id INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS komentar TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 	}
 	for _, sql := range rawMigrations {
 		if err := db.Exec(sql).Error; err != nil {

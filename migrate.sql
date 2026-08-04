@@ -38,3 +38,6 @@ ALTER TABLE pertanyaan
   ADD COLUMN IF NOT EXISTS deleted_at  TIMESTAMP;
 
 CREATE INDEX IF NOT EXISTS idx_pertanyaan_deleted_at ON pertanyaan(deleted_at);
+
+ALTER TABLE feedbacks
+  ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES users(id_users);

@@ -16,10 +16,7 @@ import '../../../ujian/presentation/screens/rekam_nilai_screen.dart';
 class ExamRoomScreen extends StatefulWidget {
   final RoomModel room;
 
-  const ExamRoomScreen({
-    Key? key,
-    required this.room,
-  }) : super(key: key);
+  const ExamRoomScreen({super.key, required this.room});
 
   @override
   State<ExamRoomScreen> createState() => _ExamRoomScreenState();
@@ -30,17 +27,51 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   List<RoomParticipantModel> _participants = [];
   int _questionsCount = 0;
   StreamSubscription<WebSocketMessage>? _wsSub;
+  int? _currentUserId;
+  // null = belum dicek, true/false = sudah ada sesi completed/timeout
+  bool? _hasCompletedSession;
 
   String get _roomCode => widget.room.roomCode;
+
+  /// True when the logged-in user is the one who created this room.
+  bool get _isAsesor => _currentUserId != null && widget.room.createdBy == _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _loadData();
     _subscribeWs();
   }
 
-  @override
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthStorageService.getCurrentUser();
+    if (!mounted) return;
+    setState(() => _currentUserId = user?.idUsers);
+    // For peserta: check if they already have a completed/timeout session in this room
+    if (user != null && widget.room.createdBy != user.idUsers) {
+      _checkCompletedSession(user.idUsers);
+    }
+  }
+
+  Future<void> _checkCompletedSession(int userId) async {
+    try {
+      final response = await ApiClient.get('/sesi-ujians?user_id=$userId');
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List<dynamic>;
+        final done = list.any((e) {
+          final roomId = e['room_id'] as String? ?? '';
+          final status = e['status'] as String? ?? '';
+          return roomId == widget.room.idRoom &&
+              (status == 'completed' || status == 'timeout');
+        });
+        setState(() => _hasCompletedSession = done);
+      }
+    } catch (_) {
+      // non-critical: default to allowing attempt if check fails
+    }
+  }  @override
   void dispose() {
     _wsSub?.cancel();
     super.dispose();
@@ -246,39 +277,35 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
     );
   }
 
+  /// Asesor: membuka sesi untuk peserta — asesor sendiri tidak mengerjakan ujian.
   void _startSession() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
-          'Start Exam Session',
-          style: TextStyle(color: Colors.white),
+        title: const Row(
+          children: [
+            Icon(Icons.play_circle_outline, color: Color(0xFF3B82F6), size: 26),
+            SizedBox(width: 10),
+            Text('Buka Sesi Ujian', style: TextStyle(color: Colors.white)),
+          ],
         ),
         content: const Text(
-          'Are you sure you want to start the exam session? All waiting students will be able to begin.',
+          'Sesi ujian sudah dibuka. Peserta yang terdaftar dapat mulai mengerjakan soal.\n\nAnda sebagai asesor tidak mengerjakan ujian ini.',
           style: TextStyle(color: Color(0xFF94A3B8)),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _confirmStartSession();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3B82F6),
-            ),
-            child: const Text('Start Session'),
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            child: const Text('OK'),
           ),
         ],
       ),
     );
   }
 
+  /// Peserta: masuk ke halaman ujian.
   void _confirmStartSession() async {
     final user = await AuthStorageService.getCurrentUser();
     if (user == null || !mounted) return;
@@ -293,7 +320,12 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
           userId: user.idUsers,
         ),
       ),
-    );
+    ).then((_) {
+      // Re-check completed status when returning from exam
+      if (mounted && _currentUserId != null) {
+        _checkCompletedSession(_currentUserId!);
+      }
+    });
   }
 
   @override
@@ -322,7 +354,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.2),
+                  color: Colors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: Colors.red),
                 ),
@@ -341,10 +373,11 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              onPressed: _openSettings,
-            ),
+            if (_isAsesor)
+              IconButton(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onPressed: _openSettings,
+              ),
           ],
         ),
         body: _isLoading
@@ -365,8 +398,10 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
                           const SizedBox(height: 24),
                           _buildStatsCards(),
                           const SizedBox(height: 24),
-                          _buildRoomCode(),
-                          const SizedBox(height: 24),
+                          if (_isAsesor) ...[
+                            _buildRoomCode(),
+                            const SizedBox(height: 24),
+                          ],
                           _buildParticipantsSection(),
                           const SizedBox(height: 24),
                           _buildRulesOfConduct(),
@@ -392,8 +427,8 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF3B82F6).withOpacity(0.8),
-            const Color(0xFF8B5CF6).withOpacity(0.8),
+            const Color(0xFF3B82F6).withValues(alpha: 0.8),
+            const Color(0xFF8B5CF6).withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -406,7 +441,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -418,7 +453,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
@@ -427,7 +462,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
             child: Icon(
               Icons.school_outlined,
               size: 80,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -487,9 +522,9 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -818,9 +853,16 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
   }
 
   Widget _buildActionButtons() {
+    if (_isAsesor) {
+      return _buildAsesorActions();
+    }
+    return _buildPesertaActions();
+  }
+
+  /// Full control for the room creator (asesor).
+  Widget _buildAsesorActions() {
     return Column(
       children: [
-        // Kelola Soal button
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -836,7 +878,6 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        // Rekap Nilai button
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -852,40 +893,76 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: OutlinedButton.icon(
-                onPressed: _openSettings,
-                icon: const Icon(Icons.settings_outlined, size: 20),
-                label: const Text('Settings'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF334155)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _startSession,
+            icon: const Icon(Icons.play_arrow, size: 20),
+            label: const Text('Start Session'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: _startSession,
-                icon: const Icon(Icons.arrow_forward, size: 20),
-                label: const Text('Start Session'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Peserta only sees "Mulai Ujian" or a "Selesai" banner if already done.
+  Widget _buildPesertaActions() {
+    // Still loading completion status
+    if (_hasCompletedSession == null) {
+      return const SizedBox(
+        height: 52,
+        child: Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6), strokeWidth: 2)),
+      );
+    }
+
+    // Already completed
+    if (_hasCompletedSession == true) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Ujian sudah diselesaikan',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-      ],
+      );
+    }
+
+    // Not yet taken
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _confirmStartSession,
+        icon: const Icon(Icons.play_arrow, size: 20),
+        label: const Text('Mulai Ujian'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3B82F6),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
     );
   }
 }

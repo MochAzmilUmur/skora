@@ -25,6 +25,7 @@ func NewFeedbackUsecase(db *gorm.DB, hub *socket.Hub) *FeedbackUsecase {
 type SendFeedbackInput struct {
 	HasilID  int    `json:"hasil_id" binding:"required"`
 	AsesorID int    `json:"asesor_id" binding:"required"`
+	SenderID int    `json:"sender_id" binding:"required"`
 	Komentar string `json:"komentar" binding:"required"`
 }
 
@@ -36,11 +37,12 @@ type SendFeedbackResult struct {
 
 // wsPayload adalah struktur pesan yang dikirim ke WebSocket client.
 type wsPayload struct {
-	Type      string    `json:"type"`
-	FeedbackID int      `json:"feedback_id"`
-	AsesorID  int       `json:"asesor_id"`
-	Komentar  string    `json:"komentar"`
-	CreatedAt time.Time `json:"created_at"`
+	Type       string    `json:"type"`
+	FeedbackID int       `json:"feedback_id"`
+	AsesorID   int       `json:"asesor_id"`
+	SenderID   int       `json:"sender_id"`
+	Komentar   string    `json:"komentar"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Execute menyimpan feedback ke database lalu mengirimkannya secara real-time
@@ -60,6 +62,7 @@ func (uc *FeedbackUsecase) Execute(input SendFeedbackInput) (*SendFeedbackResult
 	feedback := models.Feedback{
 		HasilID:   input.HasilID,
 		AsesorID:  input.AsesorID,
+		SenderID:  input.SenderID,
 		Komentar:  input.Komentar,
 		CreatedAt: time.Now(),
 	}
@@ -72,11 +75,18 @@ func (uc *FeedbackUsecase) Execute(input SendFeedbackInput) (*SendFeedbackResult
 		Type:       "feedback",
 		FeedbackID: feedback.ID,
 		AsesorID:   feedback.AsesorID,
+		SenderID:   feedback.SenderID,
 		Komentar:   feedback.Komentar,
 		CreatedAt:  feedback.CreatedAt,
 	}
 	msg, _ := json.Marshal(payload)
-	delivered := uc.hub.SendToUser(pesertaID, msg)
+
+	// Kirim ke lawan bicara: jika sender adalah asesor → kirim ke peserta, dan sebaliknya
+	targetID := pesertaID
+	if input.SenderID == pesertaID {
+		targetID = input.AsesorID
+	}
+	delivered := uc.hub.SendToUser(targetID, msg)
 
 	return &SendFeedbackResult{
 		Feedback:  feedback,

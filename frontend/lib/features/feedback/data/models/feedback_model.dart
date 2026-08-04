@@ -5,19 +5,23 @@ class FeedbackModel {
   final int id;
   final int hasilId;
   final int asesorId;
+  final int senderId;
   final String komentar;
   final DateTime createdAt;
   final HasilUjianModel? hasilUjian;
   final User? asesor;
+  final User? sender;
 
   const FeedbackModel({
     required this.id,
     required this.hasilId,
     required this.asesorId,
+    required this.senderId,
     required this.komentar,
     required this.createdAt,
     this.hasilUjian,
     this.asesor,
+    this.sender,
   });
 
   factory FeedbackModel.fromJson(Map<String, dynamic> json) {
@@ -25,6 +29,7 @@ class FeedbackModel {
       id: json['id'] as int,
       hasilId: json['hasil_id'] as int,
       asesorId: json['asesor_id'] as int,
+      senderId: (json['sender_id'] as int?) ?? (json['asesor_id'] as int),
       komentar: json['komentar'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       hasilUjian: json['hasil_ujian'] != null
@@ -32,6 +37,9 @@ class FeedbackModel {
           : null,
       asesor: json['asesor'] != null
           ? User.fromJson(json['asesor'] as Map<String, dynamic>)
+          : null,
+      sender: json['sender'] != null
+          ? User.fromJson(json['sender'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -52,19 +60,23 @@ class FeedbackModel {
     int? id,
     int? hasilId,
     int? asesorId,
+    int? senderId,
     String? komentar,
     DateTime? createdAt,
     HasilUjianModel? hasilUjian,
     User? asesor,
+    User? sender,
   }) {
     return FeedbackModel(
       id: id ?? this.id,
       hasilId: hasilId ?? this.hasilId,
       asesorId: asesorId ?? this.asesorId,
+      senderId: senderId ?? this.senderId,
       komentar: komentar ?? this.komentar,
       createdAt: createdAt ?? this.createdAt,
       hasilUjian: hasilUjian ?? this.hasilUjian,
       asesor: asesor ?? this.asesor,
+      sender: sender ?? this.sender,
     );
   }
 

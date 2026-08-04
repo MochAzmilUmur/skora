@@ -39,6 +39,7 @@ func (h *FeedbackHandler) SendFeedback(c *gin.Context) {
 	input := usecase.SendFeedbackInput{
 		HasilID:  req.HasilID,
 		AsesorID: req.AsesorID,
+		SenderID: req.SenderID,
 		Komentar: req.Komentar,
 	}
 

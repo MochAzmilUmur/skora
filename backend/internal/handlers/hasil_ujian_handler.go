@@ -90,7 +90,7 @@ func (h *HasilUjianHandler) CreateHasilUjian(c *gin.Context) {
 func (h *HasilUjianHandler) GetHasilUjians(c *gin.Context) {
 	sessionID := c.Query("session_id")
 
-	query := h.DB.Preload("SesiUjian")
+	query := h.DB.Preload("SesiUjian").Preload("SesiUjian.Room")
 	if sessionID != "" {
 		sid, err := strconv.Atoi(sessionID)
 		if err != nil {

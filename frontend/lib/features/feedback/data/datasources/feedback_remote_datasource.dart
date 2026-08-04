@@ -4,6 +4,7 @@ abstract class FeedbackRemoteDataSource {
   Future<FeedbackModel> sendFeedback({
     required int hasilId,
     required int asesorId,
+    required int senderId,
     required String komentar,
   });
   

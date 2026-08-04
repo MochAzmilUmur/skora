@@ -9,11 +9,13 @@ class FeedbackRemoteDataSourceImpl implements FeedbackRemoteDataSource {
   Future<FeedbackModel> sendFeedback({
     required int hasilId,
     required int asesorId,
+    required int senderId,
     required String komentar,
   }) async {
     final response = await ApiClient.post('/feedback', {
       'hasil_id': hasilId,
       'asesor_id': asesorId,
+      'sender_id': senderId,
       'komentar': komentar,
     });
     if (response.statusCode == 201) {

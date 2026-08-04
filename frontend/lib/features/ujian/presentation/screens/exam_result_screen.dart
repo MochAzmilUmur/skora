@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/auth_storage_service.dart';
 import '../../../../features/auth/data/models/models.dart';
+import 'feedback_screen.dart';
 
 class ExamResultScreen extends StatelessWidget {
   final HasilUjianModel hasil;
@@ -157,12 +159,45 @@ class ExamResultScreen extends StatelessWidget {
 
               const Spacer(),
 
-              // Action button
+              // Action buttons
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    // Buka feedback — asesorId dari createdBy room
+                    final asesorId =
+                        hasil.sesiUjian?.room?.createdBy ?? 0;
+                    final currentUser =
+                        await AuthStorageService.getCurrentUser();
+                    if (currentUser == null) return;
+                    // ignore: use_build_context_synchronously
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FeedbackScreen(
+                          hasil: hasil,
+                          pesertaNama: currentUser.nama,
+                          asesorId: asesorId,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.feedback_outlined),
+                  label: const Text('Lihat Feedback Asesor'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // Pop back to dashboard (pop until first route)
                     Navigator.of(context)
                         .popUntil((route) => route.isFirst);
                   },

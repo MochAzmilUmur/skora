@@ -6,6 +6,7 @@ abstract class FeedbackRepository {
   Future<Either<Failure, FeedbackModel>> sendFeedback({
     required int hasilId,
     required int asesorId,
+    required int senderId,
     required String komentar,
   });
   

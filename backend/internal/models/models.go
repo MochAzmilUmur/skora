@@ -21,13 +21,20 @@ func (User) TableName() string {
 	return "users"
 }
 
+// Room Type constants
+const (
+	RoomTypePraktikum    = "PRAKTIKUM"
+	RoomTypePilihanGanda = "PILIHAN_GANDA"
+	RoomTypeHybrid       = "HYBRID"
+)
+
 type Room struct {
 	IDRoom      uuid.UUID  `json:"id_room" gorm:"primaryKey;type:uuid;column:id_room"`
 	RoomName    string     `json:"room_name" gorm:"column:room_name"`
 	Description string     `json:"description" gorm:"column:description"`
 	Durasi      int        `json:"durasi" gorm:"column:durasi"`
 	StartDate   *time.Time `json:"start_date" gorm:"column:start_date"`
-	RoomType    string     `json:"room_type" gorm:"type:enum('PRAKTIKUM','PILIHAN_GANDA','HYBRID');default:'PILIHAN_GANDA';column:room_type"`
+	RoomType    string     `json:"room_type" gorm:"type:varchar(20);default:'PILIHAN_GANDA';column:room_type"`
 	ShuffleQ    bool       `json:"shuffle_questions" gorm:"column:shuffle_questions"`
 	RoomCode    string     `json:"room_code" gorm:"column:room_code;uniqueIndex"`
 	CreatedBy   int        `json:"created_by" gorm:"column:created_by"`
@@ -54,12 +61,19 @@ func (RoomParticipant) TableName() string {
 	return "room_participants"
 }
 
+// Type Pertanyaan constants
+const (
+	TypePertanyaanMultipleChoice = "multiple_choice"
+	TypePertanyaanText           = "text"
+	TypePertanyaanFileUpload     = "file_upload"
+)
+
 type Pertanyaan struct {
 	ID              int              `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	RoomID          uuid.UUID        `json:"room_id" gorm:"type:uuid;column:room_id"`
 	PertanyaanText  string           `json:"pertanyaan_text" gorm:"type:text;column:pertanyaan_text"`
 	GambarURL       string           `json:"gambar_url,omitempty" gorm:"column:gambar_url"`
-	TypePertanyaan  string           `json:"type_pertanyaan" gorm:"type:enum('multiple_choice','text','file_upload');column:type_pertanyaan"`
+	TypePertanyaan  string           `json:"type_pertanyaan" gorm:"type:varchar(20);default:'multiple_choice';column:type_pertanyaan"`
 	CreatedAt       time.Time        `json:"created_at" gorm:"column:created_at"`
 	DeletedAt       gorm.DeletedAt   `json:"deleted_at,omitempty" gorm:"index;column:deleted_at"`
 	Room            Room             `json:"room,omitempty" gorm:"foreignKey:RoomID;references:IDRoom"`
@@ -82,13 +96,20 @@ func (QuestionOption) TableName() string {
 	return "question_options"
 }
 
+// Sesi Ujian Status constants
+const (
+	StatusOngoing   = "ongoing"
+	StatusCompleted = "completed"
+	StatusTimeout   = "timeout"
+)
+
 type SesiUjian struct {
 	ID        int        `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
 	RoomID    uuid.UUID  `json:"room_id" gorm:"type:uuid;column:room_id"`
 	UserID    int        `json:"user_id" gorm:"column:user_id"`
 	StartTime time.Time  `json:"start_time" gorm:"column:start_time"`
 	EndTime   *time.Time `json:"end_time" gorm:"column:end_time"`
-	Status    string     `json:"status" gorm:"type:enum('ongoing','completed','timeout');column:status"`
+	Status    string     `json:"status" gorm:"type:varchar(20);default:'ongoing';column:status"`
 	Room      Room       `json:"room" gorm:"foreignKey:RoomID;references:IDRoom"`
 	User      User       `json:"user" gorm:"foreignKey:UserID;references:IDUsers"`
 }
@@ -163,7 +184,7 @@ type PasswordReset struct {
 	ExpiredAt time.Time  `json:"expired_at" gorm:"not null;column:expired_at"`
 	UsedAt    *time.Time `json:"used_at" gorm:"column:used_at"`
 	CreatedAt time.Time  `json:"created_at" gorm:"default:now();column:created_at;index"`
-	User      User       `json:"user" gorm:"foreignKey:IDUsers;references:IDUsers"`
+	
 }
 
 func (PasswordReset) TableName() string {

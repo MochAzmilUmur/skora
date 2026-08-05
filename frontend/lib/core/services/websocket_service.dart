@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../network/api_client.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -80,11 +80,15 @@ class WebSocketService extends ChangeNotifier {
 
     _setState(WsConnectionState.connecting);
 
-    final host = Platform.isAndroid
-        ? (dotenv.env['API_HOST_DEVICE'] ?? '192.168.1.19')
-        : (dotenv.env['API_HOST_EMULATOR'] ?? 'localhost');
-    final port = dotenv.env['API_PORT'] ?? '8080';
-    final uri = Uri.parse('ws://$host:$port/ws?token=$token');
+    final baseUri = Uri.parse(ApiClient.baseUrl);
+    final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
+    final uri = Uri(
+      scheme: wsScheme,
+      host: baseUri.host,
+      port: baseUri.hasPort ? baseUri.port : null,
+      path: '/ws',
+      queryParameters: {'token': token},
+    );
 
     AppLogger.log('WS: connecting to $uri', tag: 'WS');
 

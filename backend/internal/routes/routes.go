@@ -29,6 +29,8 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	// Serve uploaded static files
 	r.Static("/uploads", "./storage/uploads")
 
+
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db, hub)

@@ -18,7 +18,7 @@ func InitDB() *gorm.DB {
 	password := os.Getenv("DB_PASSWORD")
 	dbname := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=require TimeZone=Asia/Jakarta",
 		host, user, password, dbname, port)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -39,34 +39,14 @@ func InitDB() *gorm.DB {
 		&models.HasilUjian{},
 		&models.Feedback{},
 		&models.ActivityLog{},
-		&models.PasswordReset{},
+		
 	); err != nil {
 		log.Printf("WARNING: AutoMigrate failed: %v", err)
 	} else {
 		log.Println("Database migration completed successfully")
 	}
 
-	// ponytail: explicit column additions for columns that may predate AutoMigrate.
-	// These are idempotent — IF NOT EXISTS guards ensure safe re-runs.
-	rawMigrations := []string{
-		// answers.file_url — added in file_upload feature
-		`ALTER TABLE answers ADD COLUMN IF NOT EXISTS file_url TEXT`,
-		// hasil_ujian — jawaban_benar / jawaban_salah may not exist if table was created early
-		`ALTER TABLE hasil_ujian ADD COLUMN IF NOT EXISTS jawaban_benar INTEGER NOT NULL DEFAULT 0`,
-		`ALTER TABLE hasil_ujian ADD COLUMN IF NOT EXISTS jawaban_salah INTEGER NOT NULL DEFAULT 0`,
-		// pertanyaan.deleted_at was added to model but column may not exist in older DBs
-		`ALTER TABLE pertanyaan ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
-		// feedbacks — columns may not exist if table was created before this feature
-		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS hasil_id INTEGER NOT NULL DEFAULT 0`,
-		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS asesor_id INTEGER NOT NULL DEFAULT 0`,
-		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS komentar TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
-	}
-	for _, sql := range rawMigrations {
-		if err := db.Exec(sql).Error; err != nil {
-			log.Printf("WARNING: migration statement failed: %v — SQL: %s", err, sql)
-		}
-	}
+
 
 	return db
 }

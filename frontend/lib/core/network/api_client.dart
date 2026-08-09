@@ -6,29 +6,35 @@ import 'package:skora/core/services/auth_storage_service.dart';
 import 'package:skora/core/utils/logger.dart';
 
 class ApiClient {
+  /// Base URL penuh dari .env, trailing slash dihapus.
+  ///  "http://192.168.1.6:8080/api" 
+  ///"https://skora-backend.example.com/api"
   static String get baseUrl {
-    final rawUrl = dotenv.env['API_URL'] ??
-        'https://skora-backend.delightfulground-8896620c.southeastasia.azurecontainerapps.io/api';
-    return rawUrl.endsWith('/') ? rawUrl.substring(0, rawUrl.length - 1) : rawUrl;
+    final raw = dotenv.env['API_URL'] ?? '';
+    assert(raw.isNotEmpty, 'API_URL wajib diisi di file .env');
+    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
   }
 
+  /// Origin server tanpa path — dipakai untuk resolve URL gambar/upload.
   static String get serverBaseUrl {
     final uri = Uri.parse(baseUrl);
     return '${uri.scheme}://${uri.authority}';
   }
 
+  /// Skema WebSocket yang sesuai: ws:// untuk http://, wss:// untuk https://
+  static String get wsScheme =>
+      Uri.parse(baseUrl).scheme == 'https' ? 'wss' : 'ws';
+
   static String resolveImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    final cleanPath = path.startsWith('/') ? path : '/$path';
-    return '$serverBaseUrl$cleanPath';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return '$serverBaseUrl${path.startsWith('/') ? path : '/$path'}';
   }
 
+  // Gabungkan baseUrl + endpoint tanpa double-slash
   static String _buildUrl(String endpoint) {
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    return '$baseUrl$cleanEndpoint';
+    final clean = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    return '$baseUrl$clean';
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -79,23 +85,22 @@ class ApiClient {
     return response;
   }
 
-  static Future<http.Response> uploadMultipart(String endpoint, File file, {String fieldName = 'file'}) async {
+  static Future<http.Response> uploadMultipart(
+    String endpoint,
+    File file, {
+    String fieldName = 'file',
+  }) async {
     final url = _buildUrl(endpoint);
     AppLogger.api('MULTIPART', url, data: {'file': file.path});
 
     final token = await AuthStorageService.getToken();
     final request = http.MultipartRequest('POST', Uri.parse(url));
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
-
-    final multipartFile = await http.MultipartFile.fromPath(fieldName, file.path);
-    request.files.add(multipartFile);
+    request.files.add(await http.MultipartFile.fromPath(fieldName, file.path));
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-
     AppLogger.api('MULTIPART', url, statusCode: response.statusCode, data: response.body);
     return response;
   }

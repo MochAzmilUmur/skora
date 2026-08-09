@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+
 
 import 'package:flutter/material.dart';
 import 'package:skora/core/services/auth_storage_service.dart';
@@ -7,7 +7,7 @@ import 'package:skora/core/services/websocket_service.dart';
 import 'package:skora/features/auth/data/models/models.dart';
 import 'package:skora/features/feedback/data/datasources/feedback_remote_datasource_impl.dart';
 import 'package:skora/features/feedback/data/repositories/feedback_repository_impl.dart';
-import 'package:skora/features/room/data/models/websocket_message_model.dart';
+
 
 class FeedbackScreen extends StatefulWidget {
   final HasilUjianModel hasil;
@@ -310,15 +310,15 @@ class _ChatBubble extends StatelessWidget {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     // Nama pengirim — fallback aman tanpa RangeError
-    final senderNama = feedback.sender?.nama?.trim().isNotEmpty == true
+    final senderNama = feedback.sender?.nama.trim().isNotEmpty == true
         ? feedback.sender!.nama
-        : feedback.asesor?.nama?.trim().isNotEmpty == true
+        : feedback.asesor?.nama.trim().isNotEmpty == true
             ? feedback.asesor!.nama
             : isMine
                 ? 'Saya'
                 : 'Asesor';
     final initial =
-        senderNama!.isNotEmpty ? senderNama[0].toUpperCase() : '?';
+        senderNama.isNotEmpty ? senderNama[0].toUpperCase() : '?';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),

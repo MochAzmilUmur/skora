@@ -48,8 +48,8 @@ func (Room) TableName() string {
 
 type RoomParticipant struct {
 	ID       int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
-	RoomID   uuid.UUID `json:"room_id" gorm:"type:uuid;column:room_id"`
-	UserID   int       `json:"user_id" gorm:"column:user_id"`
+	RoomID   uuid.UUID `json:"room_id" gorm:"type:uuid;column:room_id;uniqueIndex:uq_room_participant"`
+	UserID   int       `json:"user_id" gorm:"column:user_id;uniqueIndex:uq_room_participant"`
 	Role     string    `json:"role" gorm:"column:role"`
 	Status   string    `json:"status" gorm:"column:status;default:'active'"`
 	JoinedAt time.Time `json:"joined_at" gorm:"column:joined_at"`
@@ -105,8 +105,8 @@ const (
 
 type SesiUjian struct {
 	ID        int        `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
-	RoomID    uuid.UUID  `json:"room_id" gorm:"type:uuid;column:room_id"`
-	UserID    int        `json:"user_id" gorm:"column:user_id"`
+	RoomID    uuid.UUID  `json:"room_id" gorm:"type:uuid;column:room_id;uniqueIndex:uq_sesi_room_user"`
+	UserID    int        `json:"user_id" gorm:"column:user_id;uniqueIndex:uq_sesi_room_user"`
 	StartTime time.Time  `json:"start_time" gorm:"column:start_time"`
 	EndTime   *time.Time `json:"end_time" gorm:"column:end_time"`
 	Status    string     `json:"status" gorm:"type:varchar(20);default:'ongoing';column:status"`
@@ -120,8 +120,8 @@ func (SesiUjian) TableName() string {
 
 type Answer struct {
 	ID               int             `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
-	SessionID        int             `json:"session_id" gorm:"column:session_id"`
-	QuestionID       int             `json:"question_id" gorm:"column:question_id"`
+	SessionID        int             `json:"session_id" gorm:"column:session_id;uniqueIndex:uq_answer_session_question"`
+	QuestionID       int             `json:"question_id" gorm:"column:question_id;uniqueIndex:uq_answer_session_question"`
 	AnswerText       *string         `json:"answer_text" gorm:"type:text;column:answer_text"`
 	SelectedOptionID *int            `json:"selected_option_id" gorm:"column:selected_option_id"`
 	FileURL          *string         `json:"file_url" gorm:"column:file_url"`
@@ -137,7 +137,7 @@ func (Answer) TableName() string {
 
 type HasilUjian struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement;column:id"`
-	SessionID      int       `json:"session_id" gorm:"column:session_id"`
+	SessionID      int       `json:"session_id" gorm:"column:session_id;uniqueIndex"`
 	TotalQuestions int       `json:"total_questions" gorm:"column:total_questions"`
 	JawabanBenar   int       `json:"jawaban_benar" gorm:"column:jawaban_benar"`
 	JawabanSalah   int       `json:"jawaban_salah" gorm:"column:jawaban_salah"`

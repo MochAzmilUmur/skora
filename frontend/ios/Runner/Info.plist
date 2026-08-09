@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Diperlukan untuk memilih gambar QR Code dari galeri</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Diperlukan untuk menyimpan QR Code ke galeri</string>
 </dict>
 </plist>

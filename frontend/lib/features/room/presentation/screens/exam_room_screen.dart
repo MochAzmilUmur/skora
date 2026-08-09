@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:gal/gal.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:screenshot/screenshot.dart';
+
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/auth_storage_service.dart';
 import '../../../../core/services/websocket_service.dart';
@@ -133,6 +136,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
 
   void _showQRCode() {
     if (_roomCode.isEmpty) return;
+    final screenshotController = ScreenshotController();
 
     showDialog(
       context: context,
@@ -166,17 +170,18 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+              Screenshot(
+                controller: screenshotController,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: QrImageView(
-                  data: 'ROOM:${widget.room.idRoom}:$_roomCode',
-                  version: QrVersions.auto,
-                  size: 250,
-                  backgroundColor: Colors.white,
+                  child: QrImageView(
+                    // FIX: encode hanya roomCode, bukan format ROOM:id:code
+                    data: _roomCode,
+                    version: QrVersions.auto,
+                    size: 250,
+                    backgroundColor: Colors.white,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -208,36 +213,94 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _roomCode));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Room code copied!'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: _roomCode));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Room code copied!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Copy'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF334155),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('Copy Room Code'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _downloadQRCode(context, screenshotController),
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('Unduh QR'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+Future<void> _downloadQRCode(
+    BuildContext dialogContext,
+    ScreenshotController screenshotController,
+  ) async {
+    try {
+      final imageBytes = await screenshotController.capture();
+      if (imageBytes == null) return;
+
+      // Menyimpan gambar ke galeri menggunakan package 'gal'
+      await Gal.putImageBytes(imageBytes, name: 'qr_room_$_roomCode');
+      
+      if (!mounted) return;
+      
+      // Jika berhasil, beri tahu pengguna
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('QR Code berhasil diunduh ke galeri!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // Opsional: Tutup pop-up dialog setelah berhasil download
+      Navigator.pop(dialogContext);
+
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Jika error (misalnya izin galeri ditolak pengguna)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan QR Code.'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _viewAllParticipants() {

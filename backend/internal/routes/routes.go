@@ -11,12 +11,13 @@ import (
 	"backend/internal/handlers"
 	"backend/internal/infrastructure/socket"
 	"backend/internal/middleware"
+	"backend/internal/repositories"
+	"backend/internal/usecase"
 )
 
 func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 	r := gin.Default()
 
-	// CORS middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -26,28 +27,31 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Serve uploaded static files
 	r.Static("/uploads", "./storage/uploads")
 
+	// Wire: repository → usecase → handler
+	sesiRepo := repositories.NewSesiUjianRepository(db)
+	hasilRepo := repositories.NewHasilUjianRepository(db)
+	answerRepo := repositories.NewAnswerRepository(db)
 
+	sesiUC := usecase.NewSesiUjianUsecase(sesiRepo, db, hub)
+	hasilUC := usecase.NewHasilUjianUsecase(hasilRepo, db)
+	answerUC := usecase.NewAnswerUsecase(answerRepo, db)
 
-	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db, hub)
 	roomHandler := handlers.NewRoomHandler(db, hub)
 	pertanyaanHandler := handlers.NewPertanyaanHandler(db)
-	sesiUjianHandler := handlers.NewSesiUjianHandler(db, hub)
-	answerHandler := handlers.NewAnswerHandler(db)
-	hasilUjianHandler := handlers.NewHasilUjianHandler(db)
+	sesiUjianHandler := handlers.NewSesiUjianHandler(sesiUC)
+	answerHandler := handlers.NewAnswerHandler(answerUC)
+	hasilUjianHandler := handlers.NewHasilUjianHandler(hasilUC)
 	feedbackHandler := handlers.NewFeedbackHandler(db, hub)
 	uploadHandler := handlers.NewUploadHandler()
 
-	// WebSocket endpoint: ws://host/ws?token=<jwt>
 	r.GET("/ws", ws.Handler(hub))
 
 	api := r.Group("/api")
 	{
-		// Auth routes (public)
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
@@ -56,14 +60,11 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
-		// Protected routes
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuth())
 
-		// File Upload route
 		protected.POST("/upload", uploadHandler.UploadFile)
 
-		// User routes
 		users := protected.Group("/users")
 		{
 			users.POST("", userHandler.CreateUser)
@@ -76,7 +77,6 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
 
-		// Room routes
 		rooms := protected.Group("/rooms")
 		{
 			rooms.POST("", roomHandler.CreateRoom)
@@ -94,9 +94,9 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			rooms.PATCH("/:id/participants/:user_id/remidi", roomHandler.ReviewRemidi)
 			rooms.GET("/:id/pertanyaans", pertanyaanHandler.GetPertanyaansByRoom)
 			rooms.POST("/:id/import-excel", pertanyaanHandler.ImportExcel)
+			rooms.GET("/:id/hasil", hasilUjianHandler.GetHasilByRoom)
 		}
 
-		// Pertanyaan routes
 		pertanyaans := protected.Group("/pertanyaans")
 		{
 			pertanyaans.POST("", pertanyaanHandler.CreatePertanyaan)
@@ -106,7 +106,6 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			pertanyaans.DELETE("/:id", pertanyaanHandler.DeletePertanyaan)
 		}
 
-		// Sesi Ujian routes
 		sesiUjians := protected.Group("/sesi-ujians")
 		{
 			sesiUjians.POST("", sesiUjianHandler.CreateSesiUjian)
@@ -116,7 +115,6 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			sesiUjians.DELETE("/:id", sesiUjianHandler.DeleteSesiUjian)
 		}
 
-		// Answer routes
 		answers := protected.Group("/answers")
 		{
 			answers.POST("", answerHandler.CreateAnswer)
@@ -126,7 +124,6 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			answers.DELETE("/:id", answerHandler.DeleteAnswer)
 		}
 
-		// Hasil Ujian routes
 		hasilUjians := protected.Group("/hasil-ujians")
 		{
 			hasilUjians.POST("", hasilUjianHandler.CreateHasilUjian)
@@ -136,13 +133,9 @@ func SetupRoutes(db *gorm.DB, hub *socket.Hub) *gin.Engine {
 			hasilUjians.DELETE("/:id", hasilUjianHandler.DeleteHasilUjian)
 		}
 
-		// Feedback routes
 		protected.POST("/feedback", feedbackHandler.SendFeedback)
 		protected.GET("/feedback", feedbackHandler.GetFeedbackByHasil)
 		protected.DELETE("/feedback/:id", feedbackHandler.DeleteFeedback)
-
-		// Rekap nilai per room
-		protected.GET("/rooms/:id/hasil", hasilUjianHandler.GetHasilByRoom)
 	}
 
 	return r

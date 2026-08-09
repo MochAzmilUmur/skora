@@ -1,196 +1,119 @@
 package handlers
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
-	"backend/internal/infrastructure/socket"
-	"backend/internal/models"
+	"backend/internal/apperrors"
+	"backend/internal/usecase"
 	"backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-// SesiUjianHandler handles exam session CRUD endpoints.
 type SesiUjianHandler struct {
-	DB  *gorm.DB
-	Hub *socket.Hub
+	uc *usecase.SesiUjianUsecase
 }
 
-// NewSesiUjianHandler creates a new SesiUjianHandler.
-func NewSesiUjianHandler(db *gorm.DB, hub *socket.Hub) *SesiUjianHandler {
-	return &SesiUjianHandler{DB: db, Hub: hub}
+func NewSesiUjianHandler(uc *usecase.SesiUjianUsecase) *SesiUjianHandler {
+	return &SesiUjianHandler{uc}
 }
 
-// broadcastExamStarted notifies room creator that a student started the exam.
-func (h *SesiUjianHandler) broadcastExamStarted(sesi models.SesiUjian) {
-	payload, _ := json.Marshal(map[string]any{
-		"type":       "exam_started",
-		"session_id": sesi.ID,
-		"room_id":    sesi.RoomID.String(),
-		"room_name":  sesi.Room.RoomName,
-		"user_id":    sesi.UserID,
-		"user_name":  sesi.User.Nama,
-		"started_at": sesi.StartTime,
-	})
-	// Notify room creator
-	h.Hub.SendToUser(sesi.Room.CreatedBy, payload)
-}
-
-// CreateSesiUjian handles POST /api/sesi-ujians.
 func (h *SesiUjianHandler) CreateSesiUjian(c *gin.Context) {
 	var req validator.CreateSesiUjianRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
-
-	// Validate UUID format
-	if ferr := validator.ValidateUUID("room_id", req.RoomID); ferr != nil {
-		validator.AbortWithValidationErrors(c, []validator.FieldError{*ferr})
+	sesi, err := h.uc.Create(usecase.CreateSesiInput{RoomID: req.RoomID, UserID: req.UserID})
+	if err != nil {
+		respondError(c, err)
 		return
 	}
-
-	roomID, _ := uuid.Parse(req.RoomID)
-
-	// Verify room exists
-	var room models.Room
-	if err := h.DB.First(&room, "id_room = ?", roomID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
-		return
-	}
-
-	// Verify user exists
-	var user models.User
-	if err := h.DB.First(&user, req.UserID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
-
-	sesi := models.SesiUjian{
-		RoomID:    roomID,
-		UserID:    req.UserID,
-		StartTime: time.Now(),
-		Status:    "ongoing",
-	}
-
-	if err := h.DB.Create(&sesi).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	h.DB.Preload("Room").Preload("User").First(&sesi, sesi.ID)
-	go h.broadcastExamStarted(sesi)
-
 	c.JSON(http.StatusCreated, sesi)
 }
 
-// GetSesiUjians handles GET /api/sesi-ujians.
 func (h *SesiUjianHandler) GetSesiUjians(c *gin.Context) {
-	userID := c.Query("user_id")
-
-	var sesis []models.SesiUjian
-	query := h.DB.Preload("Room").Preload("User")
-
-	if userID != "" {
-		uid, err := strconv.Atoi(userID)
+	userID := 0
+	if raw := c.Query("user_id"); raw != "" {
+		uid, err := strconv.Atoi(raw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id: must be a number"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "user_id harus berupa angka"})
 			return
 		}
-		query = query.Where("user_id = ?", uid)
+		userID = uid
 	}
-
-	if err := query.Find(&sesis).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	sesis, err := h.uc.GetAll(userID)
+	if err != nil {
+		respondError(c, err)
 		return
 	}
-
 	c.JSON(http.StatusOK, sesis)
 }
 
-// GetSesiUjian handles GET /api/sesi-ujians/:id.
 func (h *SesiUjianHandler) GetSesiUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID harus berupa angka"})
 		return
 	}
-
-	var sesi models.SesiUjian
-	if err := h.DB.Preload("Room").Preload("User").First(&sesi, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian not found"})
+	sesi, err := h.uc.GetByID(id)
+	if err != nil {
+		respondError(c, err)
 		return
 	}
-
 	c.JSON(http.StatusOK, sesi)
 }
 
-// UpdateSesiUjian handles PUT /api/sesi-ujians/:id.
 func (h *SesiUjianHandler) UpdateSesiUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID harus berupa angka"})
 		return
 	}
-
-	var sesi models.SesiUjian
-	if err := h.DB.First(&sesi, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian not found"})
-		return
-	}
-
 	var req validator.UpdateSesiUjianRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		validator.AbortWithValidationErrors(c, validator.FormatBindingErrors(err))
 		return
 	}
-
-	updates := map[string]interface{}{"status": req.Status}
-	if req.Status == "completed" || req.Status == "timeout" {
-		now := time.Now()
-		updates["end_time"] = now
-	}
-
-	if err := h.DB.Model(&sesi).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	sesi, err := h.uc.Update(usecase.UpdateSesiInput{ID: id, Status: req.Status})
+	if err != nil {
+		respondError(c, err)
 		return
 	}
-
-	// Mark participant as completed so they can't re-enter without remidi approval
-	if req.Status == "completed" || req.Status == "timeout" {
-		h.DB.Model(&models.RoomParticipant{}).
-			Where("room_id = ? AND user_id = ? AND status = 'active'", sesi.RoomID, sesi.UserID).
-			Update("status", "completed")
-	}
-
-	h.DB.Preload("Room").Preload("User").First(&sesi, id)
 	c.JSON(http.StatusOK, sesi)
 }
 
-// DeleteSesiUjian handles DELETE /api/sesi-ujians/:id.
 func (h *SesiUjianHandler) DeleteSesiUjian(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID: must be a number"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID harus berupa angka"})
 		return
 	}
-
-	// Verify exists
-	var sesi models.SesiUjian
-	if err := h.DB.First(&sesi, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian not found"})
+	if err := h.uc.Delete(id); err != nil {
+		respondError(c, err)
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"message": "Sesi ujian berhasil dihapus"})
+}
 
-	if err := h.DB.Delete(&models.SesiUjian{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// respondError maps apperrors domain errors to HTTP status codes.
+// Shared by all handlers in this package.
+func respondError(c *gin.Context, err error) {
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		switch {
+		case errors.Is(appErr.Code, apperrors.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message})
+		case errors.Is(appErr.Code, apperrors.ErrConflict):
+			c.JSON(http.StatusConflict, gin.H{"error": appErr.Message})
+		case errors.Is(appErr.Code, apperrors.ErrBadRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": appErr.Message})
+		}
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Sesi ujian deleted successfully"})
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 }

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+
 
 import 'package:flutter/foundation.dart';
 import '../network/api_client.dart';
@@ -80,10 +80,12 @@ class WebSocketService extends ChangeNotifier {
 
     _setState(WsConnectionState.connecting);
 
+    // Derivasi WS URI dari API_URL — tidak ada hardcode skema atau host
+    // http://host/api  → ws://host/ws
+    // https://host/api → wss://host/ws
     final baseUri = Uri.parse(ApiClient.baseUrl);
-    final wsScheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
     final uri = Uri(
-      scheme: wsScheme,
+      scheme: ApiClient.wsScheme,
       host: baseUri.host,
       port: baseUri.hasPort ? baseUri.port : null,
       path: '/ws',

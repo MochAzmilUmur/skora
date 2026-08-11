@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../features/auth/data/models/models.dart';
 import '../providers/soal_notifier.dart';
 
@@ -167,9 +168,7 @@ class _SoalFormScreenState extends State<SoalFormScreen> {
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    AppToast.showError(context, msg);
   }
 
   void _addOption() {

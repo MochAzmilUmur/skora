@@ -10,6 +10,7 @@ import '../room/data/datasources/room_remote_datasource.dart';
 import '../../core/services/auth_storage_service.dart';
 import '../../core/services/websocket_service.dart';
 import '../../core/widgets/notification_overlay.dart';
+import '../../core/utils/app_toast.dart';
 import '../auth/data/models/auth/user.dart';
 import '../notifications/presentation/screens/notifications_screen.dart';
 import '../profile/presentation/screens/profile_screen.dart';
@@ -102,9 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     result.fold(
       (failure) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load rooms: ${failure.message}'), backgroundColor: Colors.red),
-        );
+        AppToast.showError(context, 'Gagal memuat room: ${failure.message}');
       },
       (rooms) {
         setState(() {
@@ -166,16 +165,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
 
     result.fold(
-      (failure) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal bergabung: ${failure.message}'), backgroundColor: Colors.red),
-      ),
+      (failure) => AppToast.showError(context, 'Gagal bergabung: ${failure.message}'),
       (data) {
         final room = RoomModel.fromJson(data['room'] as Map<String, dynamic>);
         // Reload list so room appears in Your Exams immediately
         _loadRooms();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bergabung ke room: ${room.roomName}'), backgroundColor: Colors.green),
-        );
+        AppToast.showSuccess(context, 'Bergabung ke room: ${room.roomName}');
         _navigateToRoomDetails(room);
       },
     );
@@ -201,13 +196,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final result = await _roomRepository.deleteRoom(room.idRoom);
     if (!mounted) return;
     result.fold(
-      (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: ${f.message}'), backgroundColor: Colors.red),
-      ),
+      (f) => AppToast.showError(context, 'Gagal menghapus room: ${f.message}'),
       (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Room deleted'), backgroundColor: Colors.green),
-        );
+        AppToast.showSuccess(context, 'Room berhasil dihapus');
         _loadRooms();
       },
     );

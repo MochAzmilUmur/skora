@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../features/auth/data/models/models.dart';
 import '../../../../features/ujian/data/datasources/ujian_remote_datasource_impl.dart';
 import '../../../../features/ujian/data/repositories/ujian_repository_impl.dart';
@@ -96,21 +97,11 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
     setState(() => _isImporting = false);
 
     if (count != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Berhasil mengimpor $count soal dari Excel'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppToast.showSuccess(context, 'Berhasil mengimpor $count soal dari Excel');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(notifier.errorMessage.isNotEmpty
-              ? notifier.errorMessage
-              : 'Gagal mengimpor file Excel'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.showError(context, notifier.errorMessage.isNotEmpty
+          ? notifier.errorMessage
+          : 'Gagal mengimpor file Excel');
     }
   }
 
@@ -137,12 +128,11 @@ class _SoalManagementBodyState extends State<_SoalManagementBody> {
 
     final success = await context.read<SoalNotifier>().deleteSoal(soal.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Soal dihapus' : 'Gagal menghapus soal'),
-        backgroundColor: success ? Colors.green : Colors.red,
-      ),
-    );
+    if (success) {
+      AppToast.showSuccess(context, 'Soal dihapus');
+    } else {
+      AppToast.showError(context, 'Gagal menghapus soal');
+    }
   }
 
   @override

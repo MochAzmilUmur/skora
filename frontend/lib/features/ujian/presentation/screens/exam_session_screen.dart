@@ -4,10 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/widgets/protected_screen.dart';
 import '../../../../features/auth/data/models/models.dart';
-import '../../../../features/room/data/models/websocket_message_model.dart';
 import '../../data/repositories/ujian_repository_impl.dart';
 import '../../data/datasources/ujian_remote_datasource_impl.dart';
 import '../providers/exam_session_notifier.dart';
@@ -22,12 +22,12 @@ class ExamSessionScreen extends StatelessWidget {
   final int userId;
 
   const ExamSessionScreen({
-    Key? key,
+    super.key,
     required this.roomId,
     required this.roomName,
     required this.durasiMenit,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +54,14 @@ class _ExamSessionView extends StatefulWidget {
   State<_ExamSessionView> createState() => _ExamSessionViewState();
 }
 
-class _ExamSessionViewState extends State<_ExamSessionView> {
+class _ExamSessionViewState extends State<_ExamSessionView> with WidgetsBindingObserver {
   StreamSubscription? _wsSub;
+  bool _isBackground = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Subscribe to WS stream for real-time feedback
     final wsService = context.read<WebSocketService>();
     _wsSub = wsService.messageStream.listen((msg) {
@@ -74,44 +76,69 @@ class _ExamSessionViewState extends State<_ExamSessionView> {
 
   void _showFeedbackSnackbar(FeedbackWebSocketPayload payload) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.comment_outlined, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Feedback dari Asesor',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  Text(
-                    payload.komentar,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E40AF),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    AppToast.showInfo(context, 'Feedback Asesor: ${payload.komentar}');
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _wsSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _isBackground = false;
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (_isBackground) return; // Prevent double counting (e.g. inactive then paused)
+      _isBackground = true;
+      
+      if (!mounted) return;
+      final notifier = context.read<ExamSessionNotifier>();
+      
+      // Jangan rekam pelanggaran jika sudah selesai atau sedang proses kumpul
+      if (notifier.status == ExamStatus.completed || notifier.status == ExamStatus.submitting) {
+        return;
+      }
+      
+      final violations = notifier.recordViolation();
+      
+      if (violations >= 3) {
+        // Tutup dialog peringatan yang mungkin sedang terbuka (dari root navigator)
+        if (Navigator.canPop(context)) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        
+        AppToast.showError(context, 'Ujian otomatis dikumpulkan karena pelanggaran ke-3!');
+      } else {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_rounded, color: Colors.red, size: 28),
+                SizedBox(width: 12),
+                Text('Peringatan!', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            content: Text(
+              'Peringatan Pelanggaran $violations/3: Anda terdeteksi keluar dari layar ujian. Pada pelanggaran ke-3, ujian akan otomatis dikumpulkan!',
+              style: const TextStyle(color: Color(0xFF94A3B8)),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Mengerti', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -405,7 +432,7 @@ class _QuestionCard extends StatelessWidget {
                 ApiClient.resolveImageUrl(soal.gambarUrl),
                 width: double.infinity,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
           ],
@@ -542,6 +569,11 @@ class _EssayInputState extends State<_EssayInput> {
     return TextField(
       controller: _ctrl,
       maxLines: 5,
+      enableInteractiveSelection: false, // Mematikan seleksi teks (long press)
+      contextMenuBuilder: (context, editableTextState) {
+        // Menghilangkan menu Copy, Cut, Paste, Select All
+        return const SizedBox.shrink();
+      },
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: 'Tulis jawaban Anda di sini...',

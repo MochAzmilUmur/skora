@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/services/auth_storage_service.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../data/datasources/ujian_remote_datasource_impl.dart';
@@ -127,16 +128,10 @@ class _ExamsScreenState extends State<ExamsScreen> {
     if (!mounted) return;
     if (res.statusCode == 200) {
       setState(() => _participantStatus[roomId] = 'remidi_pending');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Permintaan remidi terkirim ke asesor'),
-            backgroundColor: Colors.blue),
-      );
+      AppToast.showSuccess(context, 'Permintaan remidi terkirim ke asesor');
     } else {
       final msg = jsonDecode(res.body)['error'] ?? 'Gagal mengirim permintaan';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
-      );
+      AppToast.showError(context, msg);
     }
   }
 

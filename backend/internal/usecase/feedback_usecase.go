@@ -39,6 +39,7 @@ type SendFeedbackResult struct {
 type wsPayload struct {
 	Type       string    `json:"type"`
 	FeedbackID int       `json:"feedback_id"`
+	HasilID    int       `json:"hasil_id"`
 	AsesorID   int       `json:"asesor_id"`
 	SenderID   int       `json:"sender_id"`
 	Komentar   string    `json:"komentar"`
@@ -74,6 +75,7 @@ func (uc *FeedbackUsecase) Execute(input SendFeedbackInput) (*SendFeedbackResult
 	payload := wsPayload{
 		Type:       "feedback",
 		FeedbackID: feedback.ID,
+		HasilID:    feedback.HasilID,
 		AsesorID:   feedback.AsesorID,
 		SenderID:   feedback.SenderID,
 		Komentar:   feedback.Komentar,

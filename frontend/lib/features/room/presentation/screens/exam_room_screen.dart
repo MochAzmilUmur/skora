@@ -10,6 +10,7 @@ import 'package:screenshot/screenshot.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/auth_storage_service.dart';
 import '../../../../core/services/websocket_service.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/widgets/protected_screen.dart';
 import '../../data/models/models.dart';
 import '../../../ujian/presentation/screens/soal_management_screen.dart';
@@ -125,13 +126,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
 
   void _copyRoomCode() {
     Clipboard.setData(ClipboardData(text: _roomCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Room code copied to clipboard'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    AppToast.showSuccess(context, 'Room code copied to clipboard');
   }
 
   void _showQRCode() {
@@ -219,13 +214,7 @@ class _ExamRoomScreenState extends State<ExamRoomScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: _roomCode));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Room code copied!'),
-                            backgroundColor: Colors.green,
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                        AppToast.showSuccess(context, 'Room code copied!');
                       },
                       icon: const Icon(Icons.copy, size: 18),
                       label: const Text('Copy'),
@@ -278,28 +267,11 @@ Future<void> _downloadQRCode(
       if (!mounted) return;
       
       // Jika berhasil, beri tahu pengguna
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('QR Code berhasil diunduh ke galeri!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      
-      // Opsional: Tutup pop-up dialog setelah berhasil download
+      AppToast.showSuccess(context, 'QR Code berhasil diunduh ke galeri!');
       Navigator.pop(dialogContext);
-
     } catch (e) {
       if (!mounted) return;
-      
-      // Jika error (misalnya izin galeri ditolak pengguna)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menyimpan QR Code.'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      AppToast.showError(context, 'Gagal menyimpan QR Code.');
     }
   }
 
@@ -315,12 +287,7 @@ Future<void> _downloadQRCode(
   }
 
   void _openSettings() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Room settings - Coming soon'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+    AppToast.showInfo(context, 'Room settings - Coming soon');
   }
 
   void _manageQuestions() {
@@ -1097,19 +1064,9 @@ Future<void> _downloadQRCode(
     if (!mounted) return;
     if (res.statusCode == 200) {
       _loadData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Remidi disetujui'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppToast.showSuccess(context, 'Remidi disetujui');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal menyetujui remidi'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.showError(context, 'Gagal menyetujui remidi');
     }
   }
 
@@ -1121,19 +1078,9 @@ Future<void> _downloadQRCode(
     if (!mounted) return;
     if (res.statusCode == 200) {
       _loadData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Remidi ditolak'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.showWarning(context, 'Remidi ditolak');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal menolak remidi'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.showError(context, 'Gagal menolak remidi');
     }
   }
 

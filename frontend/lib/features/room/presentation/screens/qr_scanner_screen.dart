@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../../../core/utils/app_toast.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -35,12 +36,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     if (!mounted) return;
 
     if (result == null || result.barcodes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('QR Code tidak ditemukan pada gambar'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppToast.showError(context, 'QR Code tidak ditemukan pada gambar');
       return;
     }
 

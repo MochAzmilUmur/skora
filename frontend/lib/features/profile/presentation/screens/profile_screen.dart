@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:skora/core/services/auth_storage_service.dart';
 import 'package:skora/core/services/theme_service.dart';
 import 'package:skora/core/widgets/user_avatar.dart';
+import 'package:skora/core/utils/app_toast.dart';
 import 'package:skora/features/profile/data/datasources/user_remote_datasource.dart';
 import 'package:skora/features/profile/presentation/providers/profile_notifier.dart';
 
@@ -255,17 +256,9 @@ class _SecurityTabState extends State<_SecurityTab> {
       _oldCtrl.clear();
       _newCtrl.clear();
       _confirmCtrl.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(widget.notifier.successMessage),
-            backgroundColor: Colors.green),
-      );
+      AppToast.showSuccess(context, widget.notifier.successMessage);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(widget.notifier.error),
-            backgroundColor: Colors.red),
-      );
+      AppToast.showError(context, widget.notifier.error);
     }
     widget.notifier.clearStatus();
   }

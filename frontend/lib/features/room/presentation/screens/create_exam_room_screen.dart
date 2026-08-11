@@ -3,6 +3,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/room_repository_impl.dart';
 import '../../data/datasources/room_remote_datasource.dart';
 import '../../../../core/services/auth_storage_service.dart';
+import '../../../../core/utils/app_toast.dart';
 
 /// Form screen for creating or editing a room.
 ///
@@ -561,8 +562,11 @@ class _CreateExamRoomScreenState extends State<CreateExamRoomScreen> {
 
   void _snack(String msg, Color bg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), backgroundColor: bg));
+    if (bg == Colors.red || bg.r > 0.8) {
+      AppToast.showError(context, msg);
+    } else {
+      AppToast.showSuccess(context, msg);
+    }
   }
 }
 

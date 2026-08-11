@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../network/api_client.dart';
+import '../utils/app_toast.dart';
 
 /// Reusable interactive avatar.
 ///
@@ -41,10 +42,7 @@ class UserAvatar extends StatelessWidget {
     final file = File(xfile.path);
     final size = await file.length();
     if (size > _maxBytes && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Foto terlalu besar (maks. 2 MB)'),
-        backgroundColor: Colors.red,
-      ));
+      AppToast.showWarning(context, 'Foto terlalu besar (maks. 2 MB)');
       return;
     }
     if (context.mounted) await onUpload?.call(file);

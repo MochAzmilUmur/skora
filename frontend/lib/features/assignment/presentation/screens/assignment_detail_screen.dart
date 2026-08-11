@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/auth_storage_service.dart';
 import '../../data/datasources/assignment_remote_datasource.dart';
@@ -78,10 +79,11 @@ class _AssignmentDetailViewState extends State<_AssignmentDetailView> {
   }
 
   void _showSnack(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red : Colors.green,
-    ));
+    if (isError) {
+      AppToast.showError(context, msg);
+    } else {
+      AppToast.showSuccess(context, msg);
+    }
   }
 
   void _openPdf(String url, String title) {

@@ -16,6 +16,9 @@ class ExamSessionNotifier extends ChangeNotifier {
   String _errorMessage = '';
   SesiUjianModel? _sesi;
   HasilUjianModel? _hasil;
+  
+  // ── Security / Violations ──────────────────────────────────────────────
+  int _violationCount = 0;
 
   // ── Question state ─────────────────────────────────────────────────────
   List<PertanyaanModel> _soal = [];
@@ -47,6 +50,7 @@ class ExamSessionNotifier extends ChangeNotifier {
   int get remainingSeconds => _remainingSeconds;
   int get totalQuestions => _soal.length;
   Set<int> get bookmarked => Set.unmodifiable(_bookmarked);
+  int get violationCount => _violationCount;
 
   PertanyaanModel? get currentSoal =>
       _soal.isEmpty ? null : _soal[_currentIndex];
@@ -97,6 +101,7 @@ class ExamSessionNotifier extends ChangeNotifier {
     _textAnswers.clear();
     _bookmarked.clear();
     _currentIndex = 0;
+    _violationCount = 0;
     notifyListeners();
 
     // Start session
@@ -112,7 +117,7 @@ class ExamSessionNotifier extends ChangeNotifier {
     }
     _sesi = sesiResult.getOrElse(() => throw StateError('unreachable'));
 
-    // Load all soal (load all pages)
+    // Load all soal (Backend sudah mengatur urutannya)
     await _loadAllSoal(roomId);
 
     // Start timer from room durasi
@@ -124,7 +129,7 @@ class ExamSessionNotifier extends ChangeNotifier {
   }
 
   Future<void> _loadAllSoal(String roomId) async {
-    const limit = 100; // ponytail: single large page; room soal rarely exceeds 100
+    const limit = 100; // room soal rarely exceeds 100
     final result = await _repo.getPertanyaanByRoom(roomId, page: 1, limit: limit);
     result.fold(
       (f) {
@@ -201,6 +206,25 @@ class ExamSessionNotifier extends ChangeNotifier {
       _bookmarked.add(questionId);
     }
     notifyListeners();
+  }
+
+  // ── Security ───────────────────────────────────────────────────────────
+  /// Records a security violation (e.g., app moved to background).
+  /// Returns the current violation count.
+  /// If it reaches 3, it automatically submits the exam.
+  int recordViolation() {
+    if (_status == ExamStatus.submitting || _status == ExamStatus.completed) {
+      return _violationCount;
+    }
+
+    _violationCount++;
+    notifyListeners();
+
+    if (_violationCount >= 3) {
+      submitExam(isTimeout: false);
+    }
+    
+    return _violationCount;
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────

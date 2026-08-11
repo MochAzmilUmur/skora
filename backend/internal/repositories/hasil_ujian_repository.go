@@ -69,7 +69,19 @@ func (r *hasilUjianRepo) CreateOrGet(sessionID int) (*models.HasilUjian, bool, e
 			}
 		}
 
-		total := len(answers)
+		// Ambil data SesiUjian untuk mendapatkan RoomID
+		var sesi models.SesiUjian
+		if err := tx.First(&sesi, sessionID).Error; err != nil {
+			return err
+		}
+
+		// Hitung total pertanyaan berdasarkan room
+		var totalQuestions int64
+		if err := tx.Model(&models.Pertanyaan{}).Where("room_id = ?", sesi.RoomID).Count(&totalQuestions).Error; err != nil {
+			return err
+		}
+		total := int(totalQuestions)
+
 		skor := 0.0
 		if total > 0 {
 			skor = float64(benar) / float64(total) * 100

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"backend/internal/models"
+	"backend/internal/usecase"
 	"backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
@@ -18,12 +19,16 @@ import (
 
 // PertanyaanHandler handles question CRUD and Excel import endpoints.
 type PertanyaanHandler struct {
-	DB *gorm.DB
+	DB      *gorm.DB
+	Usecase usecase.PertanyaanUseCase
 }
 
 // NewPertanyaanHandler creates a new PertanyaanHandler.
 func NewPertanyaanHandler(db *gorm.DB) *PertanyaanHandler {
-	return &PertanyaanHandler{DB: db}
+	return &PertanyaanHandler{
+		DB:      db,
+		Usecase: usecase.NewPertanyaanUseCase(),
+	}
 }
 
 // CreatePertanyaan handles POST /api/pertanyaans.
@@ -126,21 +131,49 @@ func (h *PertanyaanHandler) GetPertanyaansByRoom(c *gin.Context) {
 	}
 	offset := (page - 1) * limit
 
+	var room models.Room
+	if err := h.DB.First(&room, "id_room = ?", roomID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+		return
+	}
+
 	var total int64
 	h.DB.Model(&models.Pertanyaan{}).Where("room_id = ?", roomID).Count(&total)
 
 	var pertanyaans []models.Pertanyaan
+	// Fetch all questions for this room to allow consistent shuffling across the entire set
 	if err := h.DB.
 		Preload("QuestionOptions").
 		Where("room_id = ?", roomID).
-		Limit(limit).Offset(offset).
 		Find(&pertanyaans).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	if room.ShuffleQuestions {
+		userIDRaw, exists := c.Get("user_id")
+		var participantID int
+		if exists {
+			participantID = userIDRaw.(int)
+		}
+		// Apabila bukan dari endpoint protected yang memiliki user_id, participantID akan 0. 
+		// Karena ini CBT participant, asumsinya user login.
+		pertanyaans = h.Usecase.ShufflePertanyaans(roomID, participantID, pertanyaans)
+	}
+
+	// In-memory pagination
+	start := offset
+	end := start + limit
+	if start > len(pertanyaans) {
+		start = len(pertanyaans)
+	}
+	if end > len(pertanyaans) {
+		end = len(pertanyaans)
+	}
+	paginatedPertanyaans := pertanyaans[start:end]
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":  pertanyaans,
+		"data":  paginatedPertanyaans,
 		"total": total,
 		"page":  page,
 		"limit": limit,

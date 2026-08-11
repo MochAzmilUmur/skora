@@ -150,7 +150,7 @@ func (h *PertanyaanHandler) GetPertanyaansByRoom(c *gin.Context) {
 		return
 	}
 
-	if room.ShuffleQuestions {
+	if room.ShuffleQ {
 		userIDRaw, exists := c.Get("user_id")
 		var participantID int
 		if exists {

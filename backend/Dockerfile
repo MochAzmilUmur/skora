@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Builder — compile the Go binary
 # ============================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.6-alpine AS builder
 
 # Install git & ca-certificates (needed for fetching modules over HTTPS)
 RUN apk add --no-cache git ca-certificates
@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # ============================================
 # Stage 2: Runtime — minimal production image
 # ============================================
-FROM alpine:3.21
+FROM alpine:3.21.7
 
 # Install ca-certificates for HTTPS calls and tzdata for timezone support
 RUN apk add --no-cache ca-certificates tzdata
